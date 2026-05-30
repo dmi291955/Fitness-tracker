@@ -25,7 +25,7 @@ body {
   font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Segoe UI', system-ui, sans-serif;
   background: var(--bg); color: var(--text); -webkit-font-smoothing: antialiased;
   min-height: 100dvh; max-width: 600px; margin: 0 auto;
-  padding-top: env(safe-area-inset-top, 0px);
+  padding-top: 0;
   padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px));
   -webkit-tap-highlight-color: transparent; user-select: none;
 }
@@ -33,7 +33,8 @@ body {
 /* iOS-style header */
 .app-header {
   display: flex; align-items: center; justify-content: space-between; gap: 12px;
-  padding: calc(env(safe-area-inset-top) + 10px) 16px 12px 16px;
+  min-height: calc(54px + env(safe-area-inset-top, 0px));
+  padding: calc(env(safe-area-inset-top, 0px) + 4px) 16px 10px 16px;
   background: var(--surface); position: sticky; top: 0; z-index: 50;
   box-shadow: 0 1px 0 rgba(0,0,0,0.04);
 }
@@ -199,11 +200,13 @@ body {
 .plan-selector { margin-bottom: 12px; }
 .plan-selector .ps-bar {
   display: flex; align-items: center; gap: 10px;
-  background: var(--surface); border-radius: var(--radius); padding: 14px 16px;
+  background: linear-gradient(135deg, #ffffff 0%, #f7fbff 100%);
+  border: 1px solid rgba(59,130,246,0.12);
+  border-radius: var(--radius); padding: 14px 16px;
   box-shadow: var(--shadow); cursor: pointer; transition: all .2s;
 }
 .plan-selector .ps-bar:hover { box-shadow: var(--shadow-md); }
-.plan-selector .ps-icon { font-size: 20px; flex-shrink: 0; }
+.plan-selector .ps-icon { width: 36px; height: 36px; border-radius: 12px; background: #dbeafe; color: #2563eb; display: flex; align-items: center; justify-content: center; font-size: 18px; flex-shrink: 0; }
 .plan-selector .ps-value { flex: 1; font-size: 13px; font-weight: 700; color: var(--text); }
 .plan-selector .ps-arrow { font-size: 12px; color: var(--text3); transition: transform .2s; }
 .plan-selector.open .ps-arrow { transform: rotate(180deg); }
@@ -223,7 +226,7 @@ body {
 /* Plan day cards — merged panel */
 .plan-days-panel {
   background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow);
-  margin-bottom: 16px; overflow: hidden;
+  margin-bottom: 16px; overflow: hidden; border: 1px solid rgba(0,0,0,0.03);
 }
 .pdp-item {
   display: flex; align-items: center; gap: 12px; padding: 14px 16px;
@@ -251,7 +254,8 @@ body {
 /* Stats — merged panel */
 .wo-stats-panel {
   background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow);
-  margin-bottom: 16px; display: flex; align-items: stretch; padding: 6px 0;
+  margin-bottom: 16px; display: flex; align-items: stretch; padding: 8px 0;
+  border: 1px solid rgba(0,0,0,0.03);
 }
 .wos-item { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 12px 4px; text-align: center; }
 .wos-divider { width: 1px; background: #F1F1F1; margin: 10px 0; flex-shrink: 0; }
@@ -266,6 +270,7 @@ body {
   flex: 1; background: var(--surface); border-radius: var(--radius);
   padding: 16px 12px; box-shadow: var(--shadow); text-align: center;
   display: flex; flex-direction: column; align-items: center;
+  border: 1px solid rgba(0,0,0,0.03);
 }
 .timer-card .tc-title { font-size: 12px; font-weight: 600; color: var(--text2); margin-bottom: 10px; }
 .timer-card .tc-ring { position: relative; width: 80px; height: 80px; }
@@ -294,7 +299,9 @@ body {
 
 /* Training session */
 .train-session {
-  background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow);
+  background: linear-gradient(180deg, #ffffff 0%, #fbfdff 100%);
+  border: 1px solid rgba(59,130,246,0.12);
+  border-radius: var(--radius); box-shadow: var(--shadow);
   padding: 16px; margin-bottom: 16px; animation: panelIn .25s ease;
 }
 .train-session .ts-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
@@ -328,7 +335,7 @@ body {
 .ex-card {
   display: flex; align-items: flex-start; gap: 10px; padding: 12px;
   background: var(--surface); border-radius: var(--radius-sm); margin-bottom: 6px;
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-sm); border: 1px solid rgba(0,0,0,0.03);
 }
 .ex-card .ex-icon { width: 40px; height: 40px; border-radius: 12px; background: var(--bg); display: flex; align-items: center; justify-content: center; font-size: 20px; flex-shrink: 0; }
 .ex-card .ex-info { flex: 1; min-width: 0; }
@@ -474,12 +481,16 @@ body {
 
 /* ── Settings ── */
 .section-title { font-size: 16px; font-weight: 800; margin-bottom: 12px; }
-.profile-card { background: var(--surface); border-radius: var(--radius); padding: 18px 16px; box-shadow: var(--shadow); transition: box-shadow .2s; }
+.profile-card { background: var(--surface); border-radius: var(--radius); padding: 18px 16px; box-shadow: var(--shadow); transition: box-shadow .2s; overflow: hidden; }
 .profile-card:hover { box-shadow: var(--shadow-md); }
-.profile-header { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
-.profile-avatar { width: 44px; height: 44px; border-radius: 14px; background: var(--bg); display: flex; align-items: center; justify-content: center; font-size: 24px; flex-shrink: 0; }
-.profile-card select, .profile-card input[type=number] { width: 100%; padding: 11px 12px; background: var(--input-bg); border: 1.5px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-size: 14px; outline: none; font-family: inherit; transition: all .15s; }
-.profile-card select:focus, .profile-card input[type=number]:focus { border-color: var(--brand); background: var(--surface); }
+.profile-header { display: flex; align-items: center; gap: 12px; margin: -2px 0 18px; }
+.profile-avatar { width: 52px; height: 52px; border-radius: 16px; background: linear-gradient(135deg, #dcfce7, #dbeafe); display: flex; align-items: center; justify-content: center; font-size: 26px; flex-shrink: 0; box-shadow: inset 0 0 0 1px rgba(255,255,255,0.65); }
+.profile-subtitle { font-size: 11px; color: var(--text2); margin-top: 2px; }
+.profile-block { padding: 14px; border-radius: 16px; background: #fafafa; border: 1px solid rgba(0,0,0,0.035); margin-bottom: 12px; }
+.profile-block-title { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13px; font-weight: 800; margin-bottom: 10px; }
+.profile-block-title span:last-child { font-size: 11px; font-weight: 600; color: var(--text2); }
+.profile-card select, .profile-card input[type=number], .profile-card input[type=password], .profile-card input[type=text] { width: 100%; padding: 11px 12px; background: var(--input-bg); border: 1.5px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-size: 14px; outline: none; font-family: inherit; transition: all .15s; }
+.profile-card select:focus, .profile-card input[type=number]:focus, .profile-card input[type=password]:focus, .profile-card input[type=text]:focus { border-color: var(--brand); background: var(--surface); }
 
 .body-stats { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-bottom: 0; }
 .body-stat { background: var(--bg); border-radius: var(--radius-sm); padding: 12px 6px; text-align: center; transition: background .15s, box-shadow .15s; }
@@ -489,7 +500,7 @@ body {
 .body-stat input:focus { background: var(--surface); }
 .body-stat .unit { font-size: 10px; color: var(--text2); margin-top: 2px; }
 
-.goal-select-row { display: flex; gap: 6px; margin-bottom: 14px; }
+.goal-select-row { display: flex; gap: 6px; margin-bottom: 12px; }
 .goal-select-row button { flex: 1; padding: 12px 8px; border: 2px solid var(--border); border-radius: 12px; background: var(--surface); color: var(--text2); font-size: 13px; font-weight: 700; cursor: pointer; transition: all .2s; }
 .goal-select-row button:hover { border-color: #ccc; background: var(--bg); transform: translateY(-1px); box-shadow: var(--shadow); }
 .goal-select-row button.active { background: var(--brand); color: #fff; border-color: var(--brand); box-shadow: 0 2px 8px rgba(34,197,94,.3); }
@@ -519,11 +530,19 @@ body {
 .settings-btn.import-btn { background: #dbeafe; border: none; color: #3b82f6; }
 
 /* Gender-age row */
-.gender-age-row { display: flex; gap: 8px; align-items: center; margin-bottom: 14px; }
-.ga-item { cursor: pointer; }
-.ga-label { display: block; padding: 10px 16px; border: 2px solid var(--border); border-radius: var(--radius-sm); font-size: 13px; font-weight: 700; color: var(--text2); cursor: pointer; transition: all .2s; text-align: center; white-space: nowrap; }
+.gender-age-row { display: grid; grid-template-columns: 1fr 1fr 1.2fr; gap: 8px; align-items: stretch; margin-bottom: 12px; }
+.ga-item { cursor: pointer; min-width: 0; }
+.ga-label { display: flex; align-items: center; justify-content: center; height: 100%; padding: 10px 8px; border: 2px solid var(--border); border-radius: var(--radius-sm); font-size: 13px; font-weight: 700; color: var(--text2); cursor: pointer; transition: all .2s; text-align: center; white-space: nowrap; background: var(--surface); }
 .ga-label:hover { border-color: #ccc; background: var(--bg); }
 .ga-label.active { background: var(--brand); color: #fff; border-color: var(--brand); box-shadow: 0 2px 8px rgba(34,197,94,.3); }
+.age-field { display: flex; align-items: center; gap: 6px; background: var(--surface); border: 1.5px solid var(--border); border-radius: var(--radius-sm); padding: 0 10px; min-width: 0; }
+.age-field span { font-size: 11px; color: var(--text2); white-space: nowrap; }
+.age-field input { border: none !important; background: none !important; flex: 1; min-width: 0; padding: 10px 0 !important; font-size: 14px; font-weight: 700; }
+.api-key-row { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; }
+.api-key-row button { height: 42px; padding: 0 14px; border: 1.5px solid var(--border); border-radius: var(--radius-sm); background: var(--surface); color: var(--text); font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+.api-key-row button:hover { border-color: var(--brand); color: var(--brand); background: var(--brand-light); }
+.api-help { font-size: 11px; color: var(--text2); line-height: 1.45; margin-top: 8px; }
+.calc-goal-label { display: block; margin: 2px 0 8px; font-size: 12px; font-weight: 700; color: var(--text2); }
 
 /* Weight section */
 .weight-section { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 20px; overflow: hidden; }
@@ -557,6 +576,21 @@ body {
 .privacy-note { text-align: center; margin-top: 24px; font-size: 11px; color: var(--text2); }
 
 .modal::-webkit-scrollbar { width: 0; }
+@media (max-width: 430px) {
+  .app-header { gap: 8px; padding-left: 14px; padding-right: 14px; }
+  .app-header .hd-title { font-size: 18px; }
+  .hd-date-pill .hd-date-label { min-width: 54px; font-size: 12px; }
+  .hd-today-btn { padding: 6px 10px; }
+  .panel { padding: 10px 14px; }
+  .profile-card { padding: 16px 14px; }
+  .profile-block { padding: 12px; }
+  .profile-block-title { align-items: flex-start; flex-direction: column; gap: 2px; }
+  .body-stats { gap: 6px; }
+  .body-stat { padding: 10px 4px; }
+  .goal-cards { grid-template-columns: repeat(2,1fr); }
+  .timer-row { gap: 8px; }
+  .timer-card { padding: 14px 8px; }
+}
 @media (min-width: 600px) { body { border-left: 1px solid var(--border); border-right: 1px solid var(--border); } }
 </style>
 </head>
@@ -731,56 +765,58 @@ body {
       <input type="file" id="avatarInput" accept="image/*" style="display:none" onchange="handleAvatar(event)">
       <div>
         <div class="section-title" style="margin-bottom:2px;">个人数据</div>
-        <div style="font-size:11px;color:var(--text2);">点击头像上传照片</div>
+        <div class="profile-subtitle">点击头像上传照片，本页数据只保存在浏览器本地</div>
       </div>
     </div>
 
-    <!-- 性别+年龄 -->
-    <div class="gender-age-row">
-      <div class="ga-item" onclick="document.getElementById('bodyGender').value='male';saveProfile();">
-        <input type="radio" name="gender" id="gMale" style="display:none;">
-        <label for="gMale" class="ga-label" id="gaMaleLabel">♂ 男</label>
+    <div class="profile-block">
+      <div class="profile-block-title"><span>基础信息</span><span>用于估算推荐摄入</span></div>
+      <div class="gender-age-row">
+        <div class="ga-item" onclick="document.getElementById('bodyGender').value='male';saveProfile();">
+          <input type="radio" name="gender" id="gMale" style="display:none;">
+          <label for="gMale" class="ga-label" id="gaMaleLabel">♂ 男</label>
+        </div>
+        <div class="ga-item" onclick="document.getElementById('bodyGender').value='female';saveProfile();">
+          <input type="radio" name="gender" id="gFemale" style="display:none;">
+          <label for="gFemale" class="ga-label" id="gaFemaleLabel">♀ 女</label>
+        </div>
+        <div class="age-field">
+          <span>年龄</span>
+          <input id="bodyAge" type="number" placeholder="25" min="10" max="100" onchange="saveProfile()">
+        </div>
+        <select id="bodyGender" onchange="saveProfile()" style="display:none;"><option value="male">男</option><option value="female">女</option></select>
       </div>
-      <div class="ga-item" onclick="document.getElementById('bodyGender').value='female';saveProfile();">
-        <input type="radio" name="gender" id="gFemale" style="display:none;">
-        <label for="gFemale" class="ga-label" id="gaFemaleLabel">♀ 女</label>
-      </div>
-      <div style="flex:1;display:flex;align-items:center;gap:6px;background:var(--input-bg);border:1.5px solid var(--border);border-radius:var(--radius-sm);padding:0 10px;">
-        <span style="font-size:11px;color:var(--text2);white-space:nowrap;">年龄</span>
-        <input id="bodyAge" type="number" placeholder="25" min="10" max="100" onchange="saveProfile()" style="border:none;background:none;flex:1;padding:10px 0;font-size:14px;font-weight:600;outline:none;color:var(--text);">
-      </div>
-      <select id="bodyGender" onchange="saveProfile()" style="display:none;"><option value="male">男</option><option value="female">女</option></select>
-	      <!-- ═══ AI 设置 ═══ -->
-	    <div class="section-title" style="margin-top:24px;">🤖 AI 食物识别 (DeepSeek)</div>
-	    <div style="margin-bottom:12px;">
-	      <label style="display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:4px;">API Key</label>
-	      <input id="apiKeyInput" type="password" placeholder="sk-..." onchange="saveApiKey()" style="width:100%;padding:11px 12px;background:var(--input-bg);border:1.5px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:14px;outline:none;font-family:inherit;transition:all .15s;">
-	      <div style="font-size:10px;color:var(--text2);margin-top:4px;">输入 DeepSeek API Key，本地匹配不到的食物将调用 AI 估算营养。Key 只存浏览器本地。</div>
-	    </div>
-	    <button class="btn-calc" style="border:2px dashed var(--border);" onclick="const el=document.getElementById('apiKeyInput');el.type=el.type==='password'?'text':'password';this.textContent=el.type==='password'?'👁 显示 Key':'🙈 隐藏 Key';">👁 显示 Key</button>
 
+      <div class="body-stats">
+        <div class="body-stat"><label>⚖️ 体重</label><input id="bodyWeight" type="number" placeholder="70" min="30" max="300" onchange="saveProfile()"><div class="unit">kg</div></div>
+        <div class="body-stat"><label>📏 身高</label><input id="bodyHeight" type="number" placeholder="170" min="100" max="250" onchange="saveProfile()"><div class="unit">cm</div></div>
+        <div class="body-stat"><label>📊 体脂率</label><input id="bodyFat" type="number" placeholder="20" min="1" max="60" step="0.1" onchange="saveProfile()"><div class="unit">%</div></div>
+      </div>
     </div>
 
-    <!-- 身体数据 -->
-    <div class="body-stats">
-      <div class="body-stat"><label>⚖️ 体重</label><input id="bodyWeight" type="number" placeholder="70" min="30" max="300" onchange="saveProfile()"><div class="unit">kg</div></div>
-      <div class="body-stat"><label>📏 身高</label><input id="bodyHeight" type="number" placeholder="170" min="100" max="250" onchange="saveProfile()"><div class="unit">cm</div></div>
-      <div class="body-stat"><label>📊 体脂率</label><input id="bodyFat" type="number" placeholder="20" min="1" max="60" step="0.1" onchange="saveProfile()"><div class="unit">%</div></div>
+    <div class="profile-block">
+      <div class="profile-block-title"><span>AI 食物识别</span><span>DeepSeek</span></div>
+      <div class="api-key-row">
+        <input id="apiKeyInput" type="password" placeholder="sk-..." onchange="saveApiKey()">
+        <button onclick="const el=document.getElementById('apiKeyInput');el.type=el.type==='password'?'text':'password';this.textContent=el.type==='password'?'显示 Key':'隐藏 Key';">显示 Key</button>
+      </div>
+      <div class="api-help">本地匹配不到的食物会调用 DeepSeek 估算营养。API Key 只保存在当前浏览器，不会上传到仓库。</div>
     </div>
 
-    <!-- 健身目标（合并在个人数据内） -->
-    <label style="margin-top:14px;">🎯 健身目标</label>
-    <div class="goal-select-row" id="goalSelectRow">
-      <button onclick="selectGoal('cut',this)">🔥 减脂</button>
-      <button onclick="selectGoal('bulk',this)">💪 增肌</button>
-      <button onclick="selectGoal('maintain',this)">✨ 塑形</button>
-    </div>
-    <button class="btn-calc" onclick="calcRecommend()">🧮 计算推荐摄入量</button>
-    <div class="recommend-card" id="recommendCard" style="display:none;">
-      <div class="rec-title">📊 推荐每日摄入</div>
-      <div class="rec-kcal" id="recKcal">0</div><div class="rec-kcal-label">kcal / 天</div>
-      <div class="rec-macros"><span class="rec-m">🥩 蛋白质<br><b id="recProtein">0</b>g</span><span class="rec-m">🧈 脂肪<br><b id="recFat">0</b>g</span><span class="rec-m">🍚 碳水<br><b id="recCarb">0</b>g</span></div>
-      <button class="btn-apply" onclick="applyRecommend()">✅ 应用此推荐到每日目标</button>
+    <div class="profile-block" style="margin-bottom:0;">
+      <div class="profile-block-title"><span>健身目标</span><span>一键计算每日摄入</span></div>
+      <div class="goal-select-row" id="goalSelectRow">
+        <button onclick="selectGoal('cut',this)">🔥 减脂</button>
+        <button onclick="selectGoal('bulk',this)">💪 增肌</button>
+        <button onclick="selectGoal('maintain',this)">✨ 塑形</button>
+      </div>
+      <button class="btn-calc" onclick="calcRecommend()">🧮 计算推荐摄入量</button>
+      <div class="recommend-card" id="recommendCard" style="display:none;">
+        <div class="rec-title">📊 推荐每日摄入</div>
+        <div class="rec-kcal" id="recKcal">0</div><div class="rec-kcal-label">kcal / 天</div>
+        <div class="rec-macros"><span class="rec-m">🥩 蛋白质<br><b id="recProtein">0</b>g</span><span class="rec-m">🧈 脂肪<br><b id="recFat">0</b>g</span><span class="rec-m">🍚 碳水<br><b id="recCarb">0</b>g</span></div>
+        <button class="btn-apply" onclick="applyRecommend()">✓ 应用此推荐到每日目标</button>
+      </div>
     </div>
   </div>
 
