@@ -1,14 +1,7 @@
-// Service Worker for fitness-tracker PWA
-const CACHE_NAME = 'fitness-v1';
-const FILES = [
-  './fitness-tracker.html',
-  './manifest.json'
-];
+// Service Worker for fitness-tracker PWA — network-first, cache fallback
+const CACHE_NAME = 'fitness-v2';
 
 self.addEventListener('install', e => {
-  e.waitUntil(
-    caches.open(CACHE_NAME).then(cache => cache.addAll(FILES))
-  );
   self.skipWaiting();
 });
 
@@ -22,7 +15,14 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
+  // Network-first: always try network, fall back to cache
   e.respondWith(
-    caches.match(e.request).then(cached => cached || fetch(e.request))
+    fetch(e.request)
+      .then(response => {
+        const clone = response.clone();
+        caches.open(CACHE_NAME).then(cache => cache.put(e.request, clone));
+        return response;
+      })
+      .catch(() => caches.match(e.request))
   );
 });
