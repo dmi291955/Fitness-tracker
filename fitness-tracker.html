@@ -397,12 +397,16 @@ body {
 .ex-stepper .ex-step-btn:active { background: var(--brand); color: #fff; }
 .ex-stepper .ex-step-val { font-size: 12px; font-weight: 700; color: var(--text); padding: 0 6px; min-width: 38px; text-align: center; white-space: nowrap; }
 .ex-stepper .ex-step-val i { font-style: normal; font-weight: 400; color: var(--text2); font-size: 10px; margin-left: 2px; }
-.ex-card .ex-actions { display: flex; gap: 2px; flex-shrink: 0; margin-top: 2px; }
-.ex-card .ex-actions button { background: var(--bg); border: none; border-radius: 50%; width: 28px; height: 28px; font-size: 12px; cursor: pointer; color: var(--text2); display: flex; align-items: center; justify-content: center; }
-.ex-card .ex-actions .ex-done { border:1.5px solid #cbd5e1; background:#fff; color:transparent; font-weight:800; }
-.ex-card.done .ex-actions .ex-done { background:var(--brand); border-color:var(--brand); color:#fff; }
-.ex-card .ex-actions button:hover { background: var(--border); }
-.ex-card .ex-actions button.ex-del:hover { background: #fef2f2; color: #ef4444; }
+.ex-card .ex-grip { cursor: grab; color: var(--text3); font-size: 14px; padding: 0 2px; user-select: none; touch-action: none; letter-spacing: -2px; }
+.ex-card .ex-grip:active { cursor: grabbing; }
+.ex-card.dragging { opacity: 0.5; transform: scale(0.97); }
+.ex-card.drag-over { border-top: 3px solid var(--brand); }
+.ex-check-btn { width: 28px; height: 28px; border-radius: 50%; border: 2px solid #cbd5e1; background: #fff; color: transparent; font-size: 14px; font-weight: 800; cursor: pointer; flex-shrink: 0; display: flex; align-items: center; justify-content: center; transition: all .15s; }
+.ex-check-btn.done { background: var(--brand); border-color: var(--brand); color: #fff; }
+.ex-actions { display: flex; gap: 2px; flex-shrink: 0; }
+.ex-actions button { background: var(--bg); border: none; border-radius: 8px; width: 28px; height: 28px; font-size: 12px; cursor: pointer; color: var(--text2); display: flex; align-items: center; justify-content: center; }
+.ex-actions button:hover { background: var(--border); }
+.ex-actions button.ex-del:hover { background: #fef2f2; color: #ef4444; }
 
 /* Exercise edit row (inside session) */
 .ex-edit-row {
@@ -1921,30 +1925,52 @@ function renderPlanUI(){
 
 function updatePlanDay(i,val){ workoutPlan.days[i]=val; savePlan(); }
 
+let currentTrainingDay=null; // Manually selected training day index
 function renderPlanDayCards(){
   const today=getDay(currentDate);
-  const todayMuscles=today.workout.map(w=>w.muscle||'').join(' ');
   let html='';
   for(let i=0;i<workoutPlan.split;i++){
     const muscle=esc(workoutPlan.days[i]||'');
     const dayWorkouts=today.workout.filter(w=>(w.muscle||'').includes(muscle));
     const done=dayWorkouts.length>0;
-    const isToday=i===0&&today.workout.length===0?true:dayWorkouts.length>0;
-    const statusCls=done?'done':isToday?'active':'';
-    const statusText=done?'已完成':isToday?'进行中':'未开始';
+    const isCurrent=currentTrainingDay===i;
     const icon={'胸':'🏋️','背':'🔙','腿':'🦵','肩':'🤸','手臂':'💪','三头':'💪','二头':'💪','腹':'🔄','有氧':'🏃'};
     const muscleIcon=Object.keys(icon).find(k=>muscle.includes(k));
-    html+=`<div class="pdp-item" onclick="startTraining('${muscle}');collapsePlanEdit();">
-      <div class="pdp-icon" style="background:${done?'#dcfce7':isToday?'#fff7ed':'#F2F3F5'}">${muscleIcon?icon[muscleIcon]:'💪'}</div>
-      <div class="pdp-body">
-        <div class="pdp-day">第${i+1}天</div>
-        <div class="pdp-muscle">${muscle}</div>
-      </div>
-      <span class="pdp-status ${statusCls}">${statusText}</span>
-      <span class="pdp-arrow">›</span>
-    </div>`;
+    html+=`<div class="pdp-card${isCurrent?' active':''}" onclick="selectTrainingDay(${i},'${muscle}')">
+      <div class="pdp-item">
+        <div class="pdp-icon" style="background:${isCurrent?'#dcfce7':'#F2F3F5'}">${muscleIcon?icon[muscleIcon]:'💪'}</div>
+        <div class="pdp-body">
+          <div class="pdp-day">第${i+1}天</div>
+          <div class="pdp-muscle">${muscle}</div>
+        </div>
+        <span class="pdp-status${isCurrent?' active':''}${done?' done':''}">${isCurrent?'进行中':done?'已完成':'未开始'}</span>
+        ${isCurrent?`<button class="pdp-edit" onclick="event.stopPropagation();togglePlanExpand();">✎</button>`:`<span class="pdp-arrow">›</span>`}
+      </div>`;
+    if(isCurrent){
+      html+=`<div class="pdp-ex-list">`;
+      dayWorkouts.forEach((w,wi)=>{
+        const realIdx=today.workout.indexOf(w);
+        html+=`<div class="pdp-ex-row" onclick="editWorkout(${realIdx})">
+          <div class="exercise-thumb">💪</div>
+          <div><div class="pdp-ex-name">${esc(w.name)}</div><div class="pdp-ex-meta">${w.sets||0}组 × ${w.reps||0}次 · ${w.weight||0}kg</div></div>
+          <div class="done-dot${w.done?' done':''}">✓</div>
+        </div>`;
+      });
+      if(dayWorkouts.length===0){
+        html+=`<div style="padding:6px 8px;color:var(--text3);font-size:12px;text-align:center;">点击上方开始训练，或点 ✎ 编辑训练计划</div>`;
+      }
+      html+=`</div>`;
+    }
+    html+=`</div>`;
   }
   document.getElementById('planDayCards').innerHTML=html;
+}
+
+function selectTrainingDay(i,muscle){
+  if(currentTrainingDay===i){ currentTrainingDay=null; renderPlanDayCards(); return; }
+  currentTrainingDay=i;
+  renderPlanDayCards();
+  startTraining(muscle);
 }
 
 function collapsePlanEdit(){
@@ -1989,10 +2015,12 @@ function renderTrainSession(){
     for(const key of Object.keys(EXERCISE_DB)){
       if(muscle.includes(key)||key.includes(muscle)){ suggestions=suggestions.concat(EXERCISE_DB[key]); }
     }
-    suggestions=[...new Set(suggestions)].filter(s=>!addedNames.includes(s)).slice(0,8);
-    if(suggestions.length>0){
+    suggestions=[...new Set(suggestions)].filter(s=>!addedNames.includes(s)).slice(0,6);
+    // Also show exercise history for this muscle
+    const history=getExerciseHistory().filter(h=>h.muscle&&muscle.includes(h.muscle)).map(h=>h.name).filter(n=>!addedNames.includes(n)&&!suggestions.includes(n)).slice(0,4);
+    if(suggestions.length>0||history.length>0){
       html+='<div class="exercise-chips">';
-      suggestions.forEach(s=>{
+      [...history,...suggestions].forEach(s=>{
         html+=`<span class="ec-chip" onclick="quickAddExercise(${mi},'${esc(s)}')">+ ${esc(s)}</span>`;
       });
       html+='</div>';
@@ -2014,6 +2042,65 @@ function renderTrainSession(){
   </div>`;
 
   document.getElementById('trainSession').innerHTML=html;
+  // Attach drag-drop after render
+  setTimeout(attachDragDrop,50);
+}
+
+/* ═══ Drag & Drop exercise reorder ═══ */
+let dragSrcMi=-1, dragSrcEi=-1;
+function attachDragDrop(){
+  document.querySelectorAll('.ex-card[draggable]').forEach(card=>{
+    card.ondragstart=function(e){
+      dragSrcMi=parseInt(this.dataset.mi); dragSrcEi=parseInt(this.dataset.ei);
+      this.classList.add('dragging');
+      e.dataTransfer.effectAllowed='move';
+      e.dataTransfer.setData('text/plain','');
+    };
+    card.ondragend=function(e){ this.classList.remove('dragging'); document.querySelectorAll('.ex-card.drag-over').forEach(c=>c.classList.remove('drag-over')); };
+    card.ondragover=function(e){ e.preventDefault(); e.dataTransfer.dropEffect='move'; this.classList.add('drag-over'); };
+    card.ondragleave=function(e){ this.classList.remove('drag-over'); };
+    card.ondrop=function(e){
+      e.preventDefault(); this.classList.remove('drag-over');
+      const tMi=parseInt(this.dataset.mi), tEi=parseInt(this.dataset.ei);
+      if(dragSrcMi===tMi && dragSrcEi!==tEi && dragSrcMi>=0 && dragSrcEi>=0){
+        // Reorder within same muscle group
+        const srcIdx=trainSessionExercises.findIndex(ex=>ex.muscleIdx===dragSrcMi);
+        const allInGroup=[];
+        trainSessionExercises.forEach(ex=>{ if(ex.muscleIdx===dragSrcMi) allInGroup.push(ex); });
+        const srcEx=allInGroup[dragSrcEi]; allInGroup.splice(dragSrcEi,1); allInGroup.splice(tEi,0,srcEx);
+        const newAll=[];
+        trainSessionExercises.forEach(ex=>{ if(ex.muscleIdx!==dragSrcMi) newAll.push(ex); });
+        newAll.push(...allInGroup);
+        trainSessionExercises=newAll;
+        renderTrainSession();
+      }
+    };
+    // Touch drag support
+    card.ontouchstart=function(e){
+      if(!e.target.closest('.ex-grip')) return;
+      dragSrcMi=parseInt(this.dataset.mi); dragSrcEi=parseInt(this.dataset.ei);
+      this.classList.add('dragging');
+    };
+    card.ontouchend=function(e){
+      this.classList.remove('dragging');
+      const touch=e.changedTouches[0];
+      const target=document.elementFromPoint(touch.clientX,touch.clientY);
+      const dropCard=target?.closest('.ex-card');
+      if(dropCard && dropCard!==this){
+        const tMi=parseInt(dropCard.dataset.mi), tEi=parseInt(dropCard.dataset.ei);
+        if(dragSrcMi===tMi && dragSrcEi!==tEi && dragSrcMi>=0 && dragSrcEi>=0){
+          const allInGroup=[];
+          trainSessionExercises.forEach(ex=>{ if(ex.muscleIdx===dragSrcMi) allInGroup.push(ex); });
+          const srcEx=allInGroup[dragSrcEi]; allInGroup.splice(dragSrcEi,1); allInGroup.splice(tEi,0,srcEx);
+          const newAll=[];
+          trainSessionExercises.forEach(ex=>{ if(ex.muscleIdx!==dragSrcMi) newAll.push(ex); });
+          newAll.push(...allInGroup);
+          trainSessionExercises=newAll;
+          renderTrainSession();
+        }
+      }
+    };
+  });
 }
 
 function renderExerciseCard(mi,ei,ex){
@@ -2021,22 +2108,32 @@ function renderExerciseCard(mi,ei,ex){
   const icon={'胸':'🏋️','背':'🔙','腿':'🦵','肩':'🤸','手臂':'💪','三头':'💪','二头':'💪','腹':'🔄','有氧':'🏃'};
   const exIcon=Object.keys(icon).find(k=>ex.name&&ex.name.includes(k))||Object.keys(icon).find(k=>(trainSessionMuscles[mi]||'').includes(k));
   if(!hasName) return renderExerciseEditRow(mi,ei,ex);
-  // Show card with inline stepper controls
   const s=ex.sets||0, r=ex.reps||0, w=ex.weight||0;
-  return `<div class="ex-card">
+  const done=ex.done||false;
+  return `<div class="ex-card${done?' done':''}" draggable="true" data-mi="${mi}" data-ei="${ei}">
+    <span class="ex-grip" onmousedown="event.stopPropagation();" ontouchstart="event.stopPropagation();">⋮⋮</span>
     <div class="ex-icon">${exIcon?icon[exIcon]:'💪'}</div>
     <div class="ex-info">
       <div class="ex-info-name">${esc(ex.name)}</div>
       <div class="ex-info-controls">
-        <div class="ex-stepper"><button class="ex-step-btn" onclick="updateEx(${mi},${ei},'sets',Math.max(0,${s}-1));renderTrainSession();">−</button><span class="ex-step-val">${s}<i>组</i></span><button class="ex-step-btn" onclick="updateEx(${mi},${ei},'sets',${s}+1);renderTrainSession();">+</button></div>
-        <div class="ex-stepper"><button class="ex-step-btn" onclick="updateEx(${mi},${ei},'reps',Math.max(0,${r}-1));renderTrainSession();">−</button><span class="ex-step-val">${r}<i>次</i></span><button class="ex-step-btn" onclick="updateEx(${mi},${ei},'reps',${r}+1);renderTrainSession();">+</button></div>
-        <div class="ex-stepper"><button class="ex-step-btn" onclick="updateEx(${mi},${ei},'weight',Math.max(0,${w}-2.5));renderTrainSession();">−</button><span class="ex-step-val">${w}<i>kg</i></span><button class="ex-step-btn" onclick="updateEx(${mi},${ei},'weight',${w}+2.5);renderTrainSession();">+</button></div>
+        <div class="ex-stepper"><button class="ex-step-btn" onclick="event.stopPropagation();updateEx(${mi},${ei},'sets',Math.max(0,${s}-1));renderTrainSession();">−</button><span class="ex-step-val">${s}<i>组</i></span><button class="ex-step-btn" onclick="event.stopPropagation();updateEx(${mi},${ei},'sets',${s}+1);renderTrainSession();">+</button></div>
+        <div class="ex-stepper"><button class="ex-step-btn" onclick="event.stopPropagation();updateEx(${mi},${ei},'reps',Math.max(0,${r}-1));renderTrainSession();">−</button><span class="ex-step-val">${r}<i>次</i></span><button class="ex-step-btn" onclick="event.stopPropagation();updateEx(${mi},${ei},'reps',${r}+1);renderTrainSession();">+</button></div>
+        <div class="ex-stepper"><button class="ex-step-btn" onclick="event.stopPropagation();updateEx(${mi},${ei},'weight',Math.max(0,${w}-2.5));renderTrainSession();">−</button><span class="ex-step-val">${w}<i>kg</i></span><button class="ex-step-btn" onclick="event.stopPropagation();updateEx(${mi},${ei},'weight',${w}+2.5);renderTrainSession();">+</button></div>
       </div>
     </div>
+    <button class="ex-check-btn${done?' done':''}" onclick="event.stopPropagation();toggleExDone(${mi},${ei});renderTrainSession();" title="完成">${done?'✓':'○'}</button>
     <div class="ex-actions" onclick="event.stopPropagation();">
-      <button onclick="event.stopPropagation();removeExerciseRow(${mi},${ei})" class="ex-del">✕</button>
+      <button onclick="event.stopPropagation();editExerciseInline(${mi},${ei})" title="编辑组数/重量">✎</button>
+      <button onclick="event.stopPropagation();removeExerciseRow(${mi},${ei})" class="ex-del" title="删除">✕</button>
     </div>
   </div>`;
+}
+
+function toggleExDone(mi,ei){
+  let idx=0;
+  for(let i=0;i<trainSessionExercises.length;i++){
+    if(trainSessionExercises[i].muscleIdx===mi){ if(idx===ei){ trainSessionExercises[i].done=!trainSessionExercises[i].done; break; } idx++; }
+  }
 }
 
 function editExerciseInline(mi,ei){
@@ -2051,13 +2148,24 @@ function editExerciseInline(mi,ei){
 
 function renderExerciseEditRow(mi,ei,ex){
   return `<div class="ex-edit-row">
-    <input class="ex-name-input" value="${esc(ex.name||'')}" placeholder="动作名" onchange="updateEx(${mi},${ei},'name',this.value);this.closest('.ex-edit-row').querySelector('.ex-name-input').value=this.value;">
+    <input class="ex-name-input" value="${esc(ex.name||'')}" placeholder="动作名" onchange="updateEx(${mi},${ei},'name',this.value);">
     <span class="ex-lbl">组</span><input class="ex-inp" type="number" value="${ex.sets||''}" placeholder="0" min="0" onchange="updateEx(${mi},${ei},'sets',parseInt(this.value)||0)">
     <span class="ex-lbl">次</span><input class="ex-inp" type="number" value="${ex.reps||''}" placeholder="0" min="0" onchange="updateEx(${mi},${ei},'reps',parseInt(this.value)||0)">
     <span class="ex-lbl">kg</span><input class="ex-inp" type="number" value="${ex.weight||''}" placeholder="0" min="0" step="0.5" onchange="updateEx(${mi},${ei},'weight',parseFloat(this.value)||0)">
-    <span class="ex-lbl">分</span><input class="ex-inp" type="number" value="${ex.duration||''}" placeholder="0" min="0" onchange="updateEx(${mi},${ei},'duration',parseInt(this.value)||0)">
+    ${ex.name?`<button class="ex-confirm-btn" onclick="confirmCustomExercise(${mi},${ei})" title="确认添加">✓</button>`:''}
     <button class="ex-del" onclick="removeExerciseRow(${mi},${ei})">✕</button>
   </div>`;
+}
+
+function confirmCustomExercise(mi,ei){
+  // Save to exercise history
+  const ex=trainSessionExercises.filter(e=>e.muscleIdx===mi)[ei];
+  if(!ex||!ex.name) return;
+  let history=[]; try{ history=JSON.parse(localStorage.getItem('exercise_history_v1')||'[]'); }catch(e){}
+  if(!history.find(h=>h.name===ex.name)) history.unshift({name:ex.name,muscle:trainSessionMuscles[mi]||''});
+  if(history.length>50) history=history.slice(0,50);
+  localStorage.setItem('exercise_history_v1',JSON.stringify(history));
+  renderTrainSession();
 }
 
 function renderExerciseRow(mi,ei,ex){
@@ -2068,8 +2176,19 @@ function toggleMuscleSection(mi){
   document.getElementById('ms-'+mi).classList.toggle('open');
 }
 
+// Load exercise history for suggestions
+function getExerciseHistory(){
+  try{ return JSON.parse(localStorage.getItem('exercise_history_v1')||'[]'); }catch(e){ return []; }
+}
+
 function quickAddExercise(mi,name){
   trainSessionExercises.push({muscleIdx:mi,name,sets:3,reps:12,weight:0,duration:0});
+  // Save to history
+  const muscle=trainSessionMuscles[mi]||'';
+  let history=getExerciseHistory();
+  if(!history.find(h=>h.name===name)) history.unshift({name,muscle});
+  if(history.length>50) history=history.slice(0,50);
+  localStorage.setItem('exercise_history_v1',JSON.stringify(history));
   renderTrainSession();
 }
 
@@ -2144,8 +2263,6 @@ function suggestExercises(){
 }
 
 /* ═══ Timer ═══ */
-let totalTimerInterval=null, restTimerInterval=null;
-let totalSeconds=0, restSeconds=0;
 const RING_CIRC=2*Math.PI*34; // r=34 for timer rings
 
 function fmtTime(s){ const m=Math.floor(s/60), sec=s%60; return String(m).padStart(2,'0')+':'+String(sec).padStart(2,'0'); }
@@ -2156,36 +2273,63 @@ function updateTotalRing(){
   document.getElementById('totalRing').setAttribute('stroke-dashoffset',RING_CIRC*(1-pct));
 }
 
+let totalTimerStart=null, totalElapsedBefore=0, totalTimerTick=null;
+let restTimerStart=null, restElapsedBefore=0, restTimerTick=null;
+
+function fmtTime(s){ const m=Math.floor(s/60), sec=s%60; return String(m).padStart(2,'0')+':'+String(sec).padStart(2,'0'); }
+
+function updateTotalRing(s){
+  const pct=(s%60)/60;
+  document.getElementById('totalRing').setAttribute('stroke-dashoffset',RING_CIRC*(1-pct));
+}
 function toggleTotalTimer(){
-  if(totalTimerInterval){ clearInterval(totalTimerInterval); totalTimerInterval=null; document.getElementById('totalTimerBtn').textContent='开始'; document.getElementById('totalTimerBtn').classList.remove('paused'); return; }
-  totalTimerInterval=setInterval(()=>{ totalSeconds++; document.getElementById('totalTimer').textContent=fmtTime(totalSeconds); updateTotalRing(); },1000);
+  if(totalTimerStart!==null){
+    // Pause
+    totalElapsedBefore+=Math.floor((Date.now()-totalTimerStart)/1000);
+    totalTimerStart=null; clearInterval(totalTimerTick); totalTimerTick=null;
+    document.getElementById('totalTimerBtn').textContent='开始'; document.getElementById('totalTimerBtn').classList.remove('paused');
+    return;
+  }
+  totalTimerStart=Date.now();
+  totalTimerTick=setInterval(()=>{
+    const elapsed=totalElapsedBefore+Math.floor((Date.now()-totalTimerStart)/1000);
+    document.getElementById('totalTimer').textContent=fmtTime(elapsed);
+    updateTotalRing(elapsed);
+  },200);
   document.getElementById('totalTimerBtn').textContent='暂停';
   document.getElementById('totalTimerBtn').classList.add('paused');
 }
-
 function resetTotalTimer(){
-  clearInterval(totalTimerInterval); totalTimerInterval=null;
-  totalSeconds=0; document.getElementById('totalTimer').textContent='00:00';
+  totalTimerStart=null; totalElapsedBefore=0; clearInterval(totalTimerTick); totalTimerTick=null;
+  document.getElementById('totalTimer').textContent='00:00';
   document.getElementById('totalRing').setAttribute('stroke-dashoffset',RING_CIRC);
   document.getElementById('totalTimerBtn').textContent='开始';
   document.getElementById('totalTimerBtn').classList.remove('paused');
 }
 
-function updateRestRing(){
-  const pct=(restSeconds%60)/60;
+function updateRestRing(s){
+  const pct=(s%60)/60;
   document.getElementById('restRing').setAttribute('stroke-dashoffset',RING_CIRC*(1-pct));
 }
-
 function toggleRestTimer(){
-  if(restTimerInterval){ clearInterval(restTimerInterval); restTimerInterval=null; document.getElementById('restTimerBtn').textContent='开始'; document.getElementById('restTimerBtn').classList.remove('paused'); return; }
-  restTimerInterval=setInterval(()=>{ restSeconds++; document.getElementById('restTimer').textContent=fmtTime(restSeconds); updateRestRing(); },1000);
+  if(restTimerStart!==null){
+    restElapsedBefore+=Math.floor((Date.now()-restTimerStart)/1000);
+    restTimerStart=null; clearInterval(restTimerTick); restTimerTick=null;
+    document.getElementById('restTimerBtn').textContent='开始'; document.getElementById('restTimerBtn').classList.remove('paused');
+    return;
+  }
+  restTimerStart=Date.now();
+  restTimerTick=setInterval(()=>{
+    const elapsed=restElapsedBefore+Math.floor((Date.now()-restTimerStart)/1000);
+    document.getElementById('restTimer').textContent=fmtTime(elapsed);
+    updateRestRing(elapsed);
+  },200);
   document.getElementById('restTimerBtn').textContent='暂停';
   document.getElementById('restTimerBtn').classList.add('paused');
 }
-
 function resetRestTimer(){
-  clearInterval(restTimerInterval); restTimerInterval=null;
-  restSeconds=0; document.getElementById('restTimer').textContent='00:00';
+  restTimerStart=null; restElapsedBefore=0; clearInterval(restTimerTick); restTimerTick=null;
+  document.getElementById('restTimer').textContent='00:00';
   document.getElementById('restRing').setAttribute('stroke-dashoffset',RING_CIRC);
   document.getElementById('restTimerBtn').textContent='开始';
   document.getElementById('restTimerBtn').classList.remove('paused');
