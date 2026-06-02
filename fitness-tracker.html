@@ -1160,6 +1160,33 @@ const FOOD_DB={
 /* ═══ Load/Save ═══ */
 function loadData(){ try{data=JSON.parse(localStorage.getItem(STORAGE_KEY))||{};}catch(e){data={};} }
 function saveData(){ localStorage.setItem(STORAGE_KEY,JSON.stringify(data)); }
+function autoSaveAll(){
+  saveData(); saveGoals(); saveWeights();
+  // Also save current training session if active
+  if(trainSessionExercises.length>0){
+    localStorage.setItem('train_session_v1',JSON.stringify({
+      muscles:trainSessionMuscles, exercises:trainSessionExercises, note:trainSessionNote, date:currentDate
+    }));
+  }
+}
+// Periodic auto-save every 3 seconds
+setInterval(autoSaveAll,3000);
+// Save on tab hidden / closing
+document.addEventListener('visibilitychange',()=>{ if(document.hidden) autoSaveAll(); });
+window.addEventListener('beforeunload',autoSaveAll);
+// Restore training session if coming back
+function restoreTrainSession(){
+  try{
+    const saved=JSON.parse(localStorage.getItem('train_session_v1')||'null');
+    if(saved&&saved.date===currentDate&&saved.exercises&&saved.exercises.length>0){
+      trainSessionMuscles=saved.muscles||[];
+      trainSessionExercises=saved.exercises||[];
+      trainSessionNote=saved.note||'';
+      renderTrainSession();
+      document.getElementById('trainSession').style.display='block';
+    }
+  }catch(e){}
+}
 function loadGoals(){ try{const g=JSON.parse(localStorage.getItem(GOALS_KEY));if(g)goals=g;}catch(e){} syncGoalInputs(); }
 function syncGoalInputs(){ document.getElementById('goalKcal').value=goals.kcal; document.getElementById('goalProtein').value=goals.protein; document.getElementById('goalFat').value=goals.fat; document.getElementById('goalCarb').value=goals.carb; }
 function saveGoals(){ goals={kcal:+document.getElementById('goalKcal').value||2000,protein:+document.getElementById('goalProtein').value||120,fat:+document.getElementById('goalFat').value||60,carb:+document.getElementById('goalCarb').value||250}; localStorage.setItem(GOALS_KEY,JSON.stringify(goals)); render(); }
@@ -2219,6 +2246,7 @@ function cancelTraining(){
   if(trainSessionExercises.length>0&&!confirm('确定放弃当前训练记录？')) return;
   document.getElementById('trainSession').style.display='none';
   trainSessionExercises=[]; trainSessionNote='';
+  localStorage.removeItem('train_session_v1');
 }
 
 function finishTraining(){
@@ -2369,7 +2397,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ closeDietModal();
 document.querySelectorAll('.modal-bg').forEach(bg=>{ bg.addEventListener('click',function(e){ if(e.target===this){ if(this.id==='dietModal')closeDietModal(); else closeWorkoutModal(); } }); });
 
 /* ═══ Init ═══ */
-loadProfile(); loadGoals(); loadData(); loadWeights(); loadRecommend(); loadApiKey(); loadFoodCache(); loadPlan(); render(); renderWeights();
+loadProfile(); loadGoals(); loadData(); loadWeights(); loadRecommend(); loadApiKey(); loadFoodCache(); loadPlan(); render(); renderWeights(); restoreTrainSession();
 </script>
 </body>
 </html>
