@@ -441,6 +441,17 @@ body {
 .workout-card .wc-actions button { background: var(--bg); border: none; border-radius: 8px; width: 28px; height: 28px; font-size: 13px; cursor: pointer; color: var(--text2); display: flex; align-items: center; justify-content: center; }
 .workout-card .wc-actions button:hover { background: var(--border); }
 .workout-card .wc-actions button.wc-del:hover { background: #fef2f2; color: #ef4444; }
+.workout-history-panel { background: var(--surface); border-radius: var(--radius); box-shadow: var(--shadow); padding: 14px; margin: 14px 0 90px; border: 1px solid rgba(0,0,0,0.035); }
+.wh-header { font-size: 15px; font-weight: 800; margin-bottom: 10px; }
+.wh-empty { color: var(--text2); font-size: 12px; text-align: center; padding: 18px 6px; }
+.wh-item { padding: 10px 0; border-top: 1px solid #f1f1f1; }
+.wh-item:first-child { border-top: none; }
+.wh-title { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-size: 13px; font-weight: 800; }
+.wh-title span:last-child { color: var(--text2); font-size: 11px; font-weight: 600; }
+.wh-timeline { display: flex; gap: 6px; overflow-x: auto; padding-top: 8px; }
+.wh-chip { flex: 0 0 auto; min-width: 86px; border-radius: 10px; background: var(--bg); padding: 8px; font-size: 11px; color: var(--text2); }
+.wh-chip b { display: block; color: var(--text); font-size: 13px; margin-bottom: 2px; }
+.wh-delta { color: var(--brand); font-weight: 800; }
 
 /* Workout FAB */
 .wo-fab {
@@ -839,6 +850,10 @@ body {
 
   <!-- 今日训练记录 -->
   <div id="workoutList"></div>
+  <div class="workout-history-panel">
+    <div class="wh-header">📈 历史训练变化</div>
+    <div id="workoutHistoryList"></div>
+  </div>
 </div>
 
 <!-- ═══ 个人面板 ═══ -->
@@ -919,6 +934,7 @@ body {
     <div class="goal-card"><label>🧈 脂肪 g</label><input id="goalFat" type="number" value="60" onchange="saveGoals()"></div>
     <div class="goal-card"><label>🍚 碳水 g</label><input id="goalCarb" type="number" value="250" onchange="saveGoals()"></div>
   </div>
+  <button class="btn-save-profile" id="saveGoalsBtn" onclick="saveGoals();showGoalSavedToast()">💾 保存并应用饮食目标</button>
 
   <!-- ═══ 体重追踪 ═══ -->
   <div class="weight-section">
@@ -995,7 +1011,7 @@ body {
       <div class="bulk-voice-row"><button class="voice-btn-bulk" id="voiceBtnBulk" onclick="toggleVoice('bulkInput')" title="语音输入">🎤</button><div class="voice-hint" id="voiceHintBulk" style="margin-top:0;">🔴 正在聆听...</div></div>
       <div class="parse-results" id="parseResults"><div class="parse-empty">输入食物和重量后自动解析</div></div>
     </div>
-    <input type="hidden" id="editDietId"><input type="hidden" id="dietImageData" value=""><input type="hidden" id="entryMode" value="single">
+    <input type="hidden" id="editDietId"><input type="hidden" id="dietImageData" value=""><input type="hidden" id="dietImageId" value=""><input type="hidden" id="entryMode" value="single">
     <div class="modal-actions"><button class="btn-secondary" onclick="closeDietModal()">取消</button><button class="btn-primary" onclick="saveDiet()">✓ 保存</button></div>
   </div>
 </div>
@@ -1020,6 +1036,7 @@ body {
 if('serviceWorker' in navigator){ navigator.serviceWorker.register('sw.js'); }
 
 const STORAGE_KEY='fitness_v3', GOALS_KEY='goals_v3', PROFILE_KEY='profile_v3', WEIGHT_KEY='weight_v3', API_KEY_KEY='fitness_api_key', FOOD_CACHE_KEY='food_cache_v3', RECOMMEND_KEY='recommend_v3';
+const DB_NAME='fittrack_db_v1', DB_VERSION=1, IMG_STORE='images';
 let currentDate=new Date().toISOString().slice(0,10);
 let data={}, goals={kcal:2000,protein:120,fat:60,carb:250};
 let profile={weight:0,height:0,fat:0,gender:'male',age:25,goal:'maintain'};
@@ -1158,10 +1175,89 @@ const FOOD_DB={
 };
 
 /* ═══ Load/Save ═══ */
+let fitDbPromise=null;
+function openFitDB(){
+  if(fitDbPromise) return fitDbPromise;
+  fitDbPromise=new Promise((resolve,reject)=>{
+    if(!('indexedDB' in window)) return reject(new Error('IndexedDB not supported'));
+    const req=indexedDB.open(DB_NAME,DB_VERSION);
+    req.onupgradeneeded=e=>{
+      const db=e.target.result;
+      if(!db.objectStoreNames.contains(IMG_STORE)) db.createObjectStore(IMG_STORE,{keyPath:'id'});
+    };
+    req.onsuccess=()=>resolve(req.result);
+    req.onerror=()=>reject(req.error);
+  });
+  return fitDbPromise;
+}
+async function idbPutImage(dataUrl){
+  if(!dataUrl) return '';
+  const db=await openFitDB();
+  const id='img_'+Date.now()+'_'+Math.random().toString(36).slice(2,8);
+  await new Promise((resolve,reject)=>{
+    const tx=db.transaction(IMG_STORE,'readwrite');
+    tx.objectStore(IMG_STORE).put({id,dataUrl,createdAt:Date.now()});
+    tx.oncomplete=resolve; tx.onerror=()=>reject(tx.error);
+  });
+  return id;
+}
+async function idbPutImageRecord(id,dataUrl,createdAt=Date.now()){
+  if(!id||!dataUrl) return;
+  const db=await openFitDB();
+  await new Promise((resolve,reject)=>{
+    const tx=db.transaction(IMG_STORE,'readwrite');
+    tx.objectStore(IMG_STORE).put({id,dataUrl,createdAt});
+    tx.oncomplete=resolve; tx.onerror=()=>reject(tx.error);
+  });
+}
+async function idbGetImage(id){
+  if(!id) return '';
+  try{
+    const db=await openFitDB();
+    return await new Promise((resolve,reject)=>{
+      const tx=db.transaction(IMG_STORE,'readonly');
+      const req=tx.objectStore(IMG_STORE).get(id);
+      req.onsuccess=()=>resolve(req.result?.dataUrl||'');
+      req.onerror=()=>reject(req.error);
+    });
+  }catch(e){ return ''; }
+}
+async function idbDeleteImage(id){
+  if(!id) return;
+  try{
+    const db=await openFitDB();
+    await new Promise((resolve,reject)=>{
+      const tx=db.transaction(IMG_STORE,'readwrite');
+      tx.objectStore(IMG_STORE).delete(id);
+      tx.oncomplete=resolve; tx.onerror=()=>reject(tx.error);
+    });
+  }catch(e){}
+}
+function collectImageIds(){
+  const ids=new Set();
+  Object.values(data).forEach(day=>(day?.diet||[]).forEach(item=>{ if(item.imageId) ids.add(item.imageId); }));
+  return [...ids];
+}
+async function migrateDietImagesToIDB(){
+  let changed=false;
+  for(const ds of Object.keys(data)){
+    const day=data[ds]; if(!day||!Array.isArray(day.diet)) continue;
+    for(const item of day.diet){
+      if(item.image&&item.image.startsWith('data:image/')){
+        try{
+          item.imageId=await idbPutImage(item.image);
+          delete item.image;
+          changed=true;
+        }catch(e){}
+      }
+    }
+  }
+  if(changed) saveData();
+}
 function loadData(){ try{data=JSON.parse(localStorage.getItem(STORAGE_KEY))||{};}catch(e){data={};} }
-function saveData(){ localStorage.setItem(STORAGE_KEY,JSON.stringify(data)); }
+function saveData(){ try{ localStorage.setItem(STORAGE_KEY,JSON.stringify(data)); }catch(e){ console.warn('saveData failed',e); } }
 function autoSaveAll(){
-  saveData(); saveGoals(); saveWeights();
+  saveData(); saveGoals(false); saveWeights();
   // Also save current training session if active
   if(trainSessionExercises.length>0){
     localStorage.setItem('train_session_v1',JSON.stringify({
@@ -1189,7 +1285,7 @@ function restoreTrainSession(){
 }
 function loadGoals(){ try{const g=JSON.parse(localStorage.getItem(GOALS_KEY));if(g)goals=g;}catch(e){} syncGoalInputs(); }
 function syncGoalInputs(){ document.getElementById('goalKcal').value=goals.kcal; document.getElementById('goalProtein').value=goals.protein; document.getElementById('goalFat').value=goals.fat; document.getElementById('goalCarb').value=goals.carb; }
-function saveGoals(){ goals={kcal:+document.getElementById('goalKcal').value||2000,protein:+document.getElementById('goalProtein').value||120,fat:+document.getElementById('goalFat').value||60,carb:+document.getElementById('goalCarb').value||250}; localStorage.setItem(GOALS_KEY,JSON.stringify(goals)); render(); }
+function saveGoals(shouldRender=true){ goals={kcal:+document.getElementById('goalKcal').value||2000,protein:+document.getElementById('goalProtein').value||120,fat:+document.getElementById('goalFat').value||60,carb:+document.getElementById('goalCarb').value||250}; localStorage.setItem(GOALS_KEY,JSON.stringify(goals)); if(shouldRender) render(); }
 function loadProfile(){ try{const p=JSON.parse(localStorage.getItem(PROFILE_KEY));if(p)profile=p;}catch(e){} syncProfileUI(); }
 function syncProfileUI(){ document.getElementById('bodyWeight').value=profile.weight||''; document.getElementById('bodyHeight').value=profile.height||''; document.getElementById('bodyFat').value=profile.fat||''; document.getElementById('bodyGender').value=profile.gender||'male'; document.getElementById('bodyAge').value=profile.age||25; document.getElementById('gaMaleLabel').classList.toggle('active',profile.gender==='male'); document.getElementById('gaFemaleLabel').classList.toggle('active',profile.gender==='female'); syncGoalButtons(); updateBMRDisplay(); if(profile.avatar){ document.getElementById('profileAvatar').style.backgroundImage='url('+profile.avatar+')'; document.getElementById('profileAvatar').style.backgroundSize='cover'; document.getElementById('profileAvatar').style.backgroundPosition='center'; document.getElementById('profileAvatar').textContent=''; } }
 function saveProfile(){ profile.weight=parseFloat(document.getElementById('bodyWeight').value)||0; profile.height=parseFloat(document.getElementById('bodyHeight').value)||0; profile.fat=parseFloat(document.getElementById('bodyFat').value)||0; profile.gender=document.getElementById('bodyGender').value; profile.age=parseInt(document.getElementById('bodyAge').value)||25; localStorage.setItem(PROFILE_KEY,JSON.stringify(profile)); syncProfileUI(); }
@@ -1198,6 +1294,14 @@ function showSavedToast(){
   if(!btn) return;
   const orig=btn.textContent;
   btn.textContent='✓ 已保存';
+  btn.style.background='#16a34a';
+  setTimeout(()=>{ btn.textContent=orig; btn.style.background=''; },1500);
+}
+function showGoalSavedToast(){
+  const btn=document.getElementById('saveGoalsBtn');
+  if(!btn) return;
+  const orig=btn.textContent;
+  btn.textContent='✓ 目标已应用';
   btn.style.background='#16a34a';
   setTimeout(()=>{ btn.textContent=orig; btn.style.background=''; },1500);
 }
@@ -1329,8 +1433,9 @@ function render(){
         <div class="ds-food-list">`;
       items.forEach((item,i)=>{
         const foodIcon={'breakfast':'🥐','lunch':'🍱','dinner':'🍲','snack':'🍌'}[item.meal]||'🍽️';
+        const imgAttr=item.imageId?` data-image-id="${esc(item.imageId)}"`:'';
         detailHTML+=`<div class="food-card" onclick="showFoodDetail(${item.idx})">
-          <div class="fc-icon">${item.image?`<img src="${item.image}" style="width:34px;height:34px;border-radius:9px;object-fit:cover;">`:foodIcon}</div>
+          <div class="fc-icon"${imgAttr}>${item.image?`<img src="${item.image}" style="width:34px;height:34px;border-radius:9px;object-fit:cover;">`:foodIcon}</div>
           <div class="fc-info">
             <div class="fc-name">${esc(item.name)}</div>
             <div class="fc-meta">${Math.round(item.kcal||0)} kcal</div>
@@ -1346,6 +1451,7 @@ function render(){
     });
   }
   document.getElementById('mealDetail').innerHTML=detailHTML;
+  hydrateDietImages();
 
   // 训练渲染
   let totalSets=0,totalDuration=0;
@@ -1360,9 +1466,41 @@ function render(){
   }else{
     wl.innerHTML=day.workout.map((w,i)=>{let parts=[];if(w.sets&&w.reps)parts.push(`${w.sets}组 × ${w.reps}次`);if(w.weight>0)parts.push(`${w.weight}kg`);const wIcon=w.name.includes('跑')||w.name.includes('有氧')?'🏃':w.name.includes('胸')||w.name.includes('卧推')?'🏋️':w.name.includes('背')||w.name.includes('拉')?'🔙':w.name.includes('腿')||w.name.includes('蹲')?'🦵':w.name.includes('肩')?'🤸':w.name.includes('臂')||w.name.includes('弯举')?'💪':'💪';return`<div class="workout-card"><div class="wc-icon">${wIcon}</div><div class="wc-body"><div class="wc-name">${esc(w.name)}</div><div class="wc-detail">${w.muscle?`<span>🎯 ${esc(w.muscle)}</span>`:''}${parts.length?'<span>'+parts.join(' · ')+'</span>':''}${w.duration?'<span>⏱ '+w.duration+' 分钟</span>':''}</div>${w.note?`<div class="wc-note">"${esc(w.note)}"</div>`:''}</div><div class="wc-actions"><button onclick="editWorkout(${i})">✎</button><button class="wc-del" onclick="deleteWorkout(${i})">✕</button></div></div>`;}).join('');
   }
+  renderWorkoutHistory();
 }
 
 function esc(s){ const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+async function hydrateDietImages(){
+  const nodes=[...document.querySelectorAll('[data-image-id]')];
+  for(const node of nodes){
+    const id=node.getAttribute('data-image-id');
+    const dataUrl=await idbGetImage(id);
+    if(dataUrl) node.innerHTML=`<img src="${dataUrl}" style="width:34px;height:34px;border-radius:9px;object-fit:cover;">`;
+  }
+}
+
+function renderWorkoutHistory(){
+  const el=document.getElementById('workoutHistoryList'); if(!el) return;
+  const map={};
+  Object.keys(data).sort().forEach(date=>{
+    const ws=data[date]?.workout||[];
+    ws.forEach(w=>{
+      const name=w.name||'未命名动作';
+      if(!map[name]) map[name]=[];
+      map[name].push({date,muscle:w.muscle||'',sets:w.sets||0,reps:w.reps||0,weight:w.weight||0,duration:w.duration||0});
+    });
+  });
+  const items=Object.keys(map).map(name=>({name,records:map[name]})).sort((a,b)=>b.records.length-a.records.length).slice(0,8);
+  if(items.length===0){ el.innerHTML='<div class="wh-empty">完成几次训练后，这里会显示动作重量、组数和次数的变化</div>'; return; }
+  el.innerHTML=items.map(item=>{
+    const records=item.records.slice(-6);
+    const first=records[0], last=records[records.length-1];
+    const delta=(last.weight||0)-(first.weight||0);
+    const deltaText=delta>0?`+${delta}kg`:delta<0?`${delta}kg`:'稳定';
+    const chips=records.map(r=>`<div class="wh-chip"><b>${r.weight?`${r.weight}kg`:`${r.sets}组`}</b>${r.date.slice(5)}<br>${r.sets}组 × ${r.reps}次</div>`).join('');
+    return `<div class="wh-item"><div class="wh-title"><span>${esc(item.name)}</span><span class="wh-delta">${deltaText}</span></div><div class="wh-timeline">${chips}</div></div>`;
+  }).join('');
+}
 
 /* ═══ Week strip ═══ */
 function renderWeekStrip(){
@@ -1547,7 +1685,7 @@ function applyRecommend(){
 }
 
 /* ═══ Voice ═══ */
-let recognition=null,isListening=false,voiceTargetId='foodName';
+let recognition=null,isListening=false,voiceTargetId='foodName',voiceResultTimer=null;
 async function toggleVoice(targetId){
   voiceTargetId=targetId||'foodName';
   const btn=targetId==='bulkInput'?document.getElementById('voiceBtnBulk'):document.getElementById('voiceBtn');
@@ -1555,25 +1693,31 @@ async function toggleVoice(targetId){
   const hint=document.getElementById(hintId);
   if(!('webkitSpeechRecognition' in window)&&!('SpeechRecognition' in window)){ alert('请用 Chrome 浏览器并通过 http:// 访问'); return; }
   if(isListening){ stopVoice(); document.getElementById(voiceTargetId).focus(); return; }
-  try{ const stream=await navigator.mediaDevices.getUserMedia({audio:true}); stream.getTracks().forEach(t=>t.stop()); }catch(e){ alert('无法访问麦克风'); return; }
+  if(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia){
+    try{ const stream=await navigator.mediaDevices.getUserMedia({audio:true}); stream.getTracks().forEach(t=>t.stop()); }catch(e){ alert('无法访问麦克风'); return; }
+  }
   const SpeechRecognition=window.SpeechRecognition||window.webkitSpeechRecognition;
-  recognition=new SpeechRecognition(); recognition.lang='zh-CN'; recognition.interimResults=true; recognition.continuous=true;
+  try{ if(recognition) recognition.abort(); }catch(e){}
+  recognition=new SpeechRecognition(); recognition.lang='zh-CN'; recognition.interimResults=true; recognition.continuous=false; recognition.maxAlternatives=1;
   recognition.onstart=()=>{ isListening=true; btn.classList.add('listening'); btn.textContent='⏹'; hint.classList.add('show'); hint.innerHTML='🔴 录音中 — <b>说完点击按钮停止</b>'; };
-  recognition.onresult=(event)=>{ let combined=''; for(let i=0;i<event.results.length;i++) combined+=event.results[i][0].transcript; const target=document.getElementById(voiceTargetId); target.value=combined; if(voiceTargetId==='bulkInput') autoParseBulk(); else if(document.getElementById('foodWeight').value) tryAutoCalc(); };
-  recognition.onerror=(event)=>{ if(event.error==='no-speech'||event.error==='aborted'){ /* 忽略，会自动重启 */ return; } let msg='未识别到语音'; if(event.error==='not-allowed') msg='麦克风权限被拒绝'; else if(event.error==='network') msg='网络连接失败'; hint.innerHTML='⚠️ '+msg; setTimeout(()=>{if(hint)hint.classList.remove('show');},3000); stopVoice(); };
-  recognition.onend=()=>{
-    // 如果还在录音状态（API 因静音超时自动结束），自动重启
-    if(isListening){
-      try{ recognition.start(); }catch(e){ stopVoice(); }
-    }
+  recognition.onresult=(event)=>{
+    let combined=''; for(let i=0;i<event.results.length;i++) combined+=event.results[i][0].transcript;
+    const target=document.getElementById(voiceTargetId); if(target) target.value=combined.trim();
+    clearTimeout(voiceResultTimer);
+    voiceResultTimer=setTimeout(()=>{ if(voiceTargetId==='bulkInput') autoParseBulk(); else if(document.getElementById('foodWeight').value) tryAutoCalc(); },300);
   };
-  recognition.start();
+  recognition.onerror=(event)=>{ if(event.error==='aborted') return; let msg='未识别到语音'; if(event.error==='not-allowed') msg='麦克风权限被拒绝'; else if(event.error==='network') msg='网络连接失败'; hint.innerHTML='⚠️ '+msg; setTimeout(()=>{if(hint)hint.classList.remove('show');},3000); stopVoice(); };
+  recognition.onend=()=>{
+    stopVoice();
+  };
+  try{ recognition.start(); }catch(e){ stopVoice(); alert('语音启动失败，请重试'); }
 }
 function stopVoice(){
   isListening=false;
+  clearTimeout(voiceResultTimer);
   ['voiceBtn','voiceBtnBulk'].forEach(id=>{ const b=document.getElementById(id); if(b){b.classList.remove('listening');b.textContent='🎤';} });
   ['voiceHintSingle','voiceHintBulk'].forEach(id=>{ const h=document.getElementById(id); if(h){h.classList.remove('show');h.innerHTML='🔴 正在聆听...';} });
-  if(recognition){ try{recognition.stop();}catch(e){} recognition=null; }
+  if(recognition){ const r=recognition; recognition=null; try{r.abort();}catch(e){} }
 }
 
 /* ═══ AI Food Query via DeepSeek ═══ */
@@ -1768,8 +1912,9 @@ function renderParseResults(){
 }
 function removeParsedItem(i){ parsedItems.splice(i,1); renderParseResults(); }
 
-function setUploadedImage(dataUrl){
+function setUploadedImage(dataUrl,imageId=''){
   document.getElementById('dietImageData').value=dataUrl;
+  document.getElementById('dietImageId').value=imageId;
   document.getElementById('imgPreview').src=dataUrl;
   document.getElementById('imgPreview').style.display='block';
   document.getElementById('imgRemove').style.display='flex';
@@ -1810,14 +1955,14 @@ async function handleImageUpload(e){
     alert('图片处理失败，请换一张图片再试');
   }
 }
-function removeImage(e){ e.stopPropagation(); document.getElementById('dietImageData').value=''; document.getElementById('imgPreview').style.display='none'; document.getElementById('imgRemove').style.display='none'; document.getElementById('uploadZone').classList.remove('has-image'); document.querySelector('.upload-zone .upload-icon').style.display=''; document.querySelector('.upload-zone .upload-text').style.display=''; document.querySelector('.upload-zone .upload-sub').style.display=''; document.getElementById('foodImage').value=''; }
+function removeImage(e){ e.stopPropagation(); document.getElementById('dietImageData').value=''; document.getElementById('dietImageId').value=''; document.getElementById('imgPreview').style.display='none'; document.getElementById('imgRemove').style.display='none'; document.getElementById('uploadZone').classList.remove('has-image'); document.querySelector('.upload-zone .upload-icon').style.display=''; document.querySelector('.upload-zone .upload-text').style.display=''; document.querySelector('.upload-zone .upload-sub').style.display=''; document.getElementById('foodImage').value=''; }
 const uploadZone=document.getElementById('uploadZone'); uploadZone.addEventListener('dragover',e=>{e.preventDefault();uploadZone.style.borderColor='var(--blue)';}); uploadZone.addEventListener('dragleave',()=>{uploadZone.style.borderColor='';}); uploadZone.addEventListener('drop',e=>{ e.preventDefault(); uploadZone.style.borderColor=''; const file=e.dataTransfer.files[0]; if(file&&file.type.startsWith('image/')){ document.getElementById('foodImage').files=e.dataTransfer.files; handleImageUpload({target:{files:[file]}}); } });
 
 function toggleSnackTime(){
   const meal=document.getElementById('mealType').value;
   document.getElementById('snackTimeRow').style.display=meal==='snack'?'block':'none';
 }
-function openDietModal(editIndex){
+async function openDietModal(editIndex){
   resetUploadUI(); stopVoice(); parsedItems=[];
   document.getElementById('dietModal').classList.add('show');
   if(typeof editIndex==='number'){
@@ -1825,23 +1970,51 @@ function openDietModal(editIndex){
     document.getElementById('mealType').value=item.meal||'lunch'; document.getElementById('foodName').value=item.name||''; document.getElementById('foodWeight').value=item.weight||''; document.getElementById('foodKcal').value=item.kcal||''; document.getElementById('foodProtein').value=item.protein||''; document.getElementById('foodFat').value=item.fat||''; document.getElementById('foodCarb').value=item.carb||''; document.getElementById('editDietId').value=editIndex;
     if(item.meal==='snack'&&item.snackTime) document.getElementById('snackTime').value=item.snackTime;
     toggleSnackTime();
-    if(item.image){ document.getElementById('dietImageData').value=item.image; document.getElementById('imgPreview').src=item.image; document.getElementById('imgPreview').style.display='block'; document.getElementById('imgRemove').style.display='flex'; document.getElementById('uploadZone').classList.add('has-image'); document.querySelector('.upload-zone .upload-icon').style.display='none'; document.querySelector('.upload-zone .upload-text').style.display='none'; document.querySelector('.upload-zone .upload-sub').style.display='none'; }
+    if(item.image){ setUploadedImage(item.image,''); }
+    else if(item.imageId){ const img=await idbGetImage(item.imageId); if(img) setUploadedImage(img,item.imageId); }
   }else{ switchEntryMode('single'); document.getElementById('mealType').value='lunch'; document.getElementById('foodName').value=''; document.getElementById('foodWeight').value=''; document.getElementById('foodKcal').value=''; document.getElementById('foodProtein').value=''; document.getElementById('foodFat').value=''; document.getElementById('foodCarb').value=''; document.getElementById('editDietId').value=''; document.getElementById('bulkInput').value=''; document.getElementById('parseResults').innerHTML='<div class="parse-empty">输入食物和重量后自动解析</div>'; document.getElementById('snackTime').value='after_lunch'; toggleSnackTime(); }
 }
-function resetUploadUI(){ document.getElementById('dietImageData').value=''; document.getElementById('imgPreview').style.display='none'; document.getElementById('imgRemove').style.display='none'; document.getElementById('uploadZone').classList.remove('has-image'); document.querySelector('.upload-zone .upload-icon').style.display=''; document.querySelector('.upload-zone .upload-text').style.display=''; document.querySelector('.upload-zone .upload-sub').style.display=''; document.getElementById('foodImage').value=''; }
+function resetUploadUI(){ document.getElementById('dietImageData').value=''; document.getElementById('dietImageId').value=''; document.getElementById('imgPreview').style.display='none'; document.getElementById('imgRemove').style.display='none'; document.getElementById('uploadZone').classList.remove('has-image'); document.querySelector('.upload-zone .upload-icon').style.display=''; document.querySelector('.upload-zone .upload-text').style.display=''; document.querySelector('.upload-zone .upload-sub').style.display=''; document.getElementById('foodImage').value=''; }
 function closeDietModal(){ document.getElementById('dietModal').classList.remove('show'); stopVoice(); }
 let dietSaving=false;
-function saveDiet(){
+async function saveDiet(){
   if(dietSaving) return;
-  const mode=document.getElementById('entryMode').value,meal=document.getElementById('mealType').value,image=document.getElementById('dietImageData').value||'';
-  if(mode==='bulk'){ if(parsedItems.length===0) return alert('请先输入食物信息'); if(!data[currentDate]) data[currentDate]={diet:[],workout:[]}; parsedItems.forEach(item=>{ data[currentDate].diet.push({meal,name:item.name,weight:item.weight,kcal:item.kcal,protein:item.protein,fat:item.fat,carb:item.carb,image:''}); }); if(image&&parsedItems.length>0) data[currentDate].diet[data[currentDate].diet.length-parsedItems.length].image=image; }
-  else{ const name=document.getElementById('foodName').value.trim(); if(!name) return alert('请输入食物名称'); const snackTime=document.getElementById('mealType').value==='snack'?document.getElementById('snackTime').value:''; const item={meal,name,weight:+document.getElementById('foodWeight').value||0,kcal:+document.getElementById('foodKcal').value||0,protein:+document.getElementById('foodProtein').value||0,fat:+document.getElementById('foodFat').value||0,carb:+document.getElementById('foodCarb').value||0,image,snackTime}; if(!data[currentDate]) data[currentDate]={diet:[],workout:[]}; const editId=document.getElementById('editDietId').value; if(editId!=='') data[currentDate].diet[editId]=item; else data[currentDate].diet.push(item); }
-  dietSaving=true; saveData(); closeDietModal(); render();
-  setTimeout(()=>{ dietSaving=false; },300);
+  dietSaving=true;
+  const saveBtn=document.querySelector('#dietModal .btn-primary');
+  const oldBtnText=saveBtn?saveBtn.textContent:'';
+  if(saveBtn){ saveBtn.disabled=true; saveBtn.textContent='保存中...'; }
+  try{
+    const mode=document.getElementById('entryMode').value,meal=document.getElementById('mealType').value;
+    const imageData=document.getElementById('dietImageData').value||'';
+    let imageId=document.getElementById('dietImageId').value||'';
+    if(imageData&&!imageId) imageId=await idbPutImage(imageData);
+    if(mode==='bulk'){
+      if(parsedItems.length===0) return alert('请先输入食物信息');
+      if(!data[currentDate]) data[currentDate]={diet:[],workout:[]};
+      parsedItems.forEach((item,idx)=>{ data[currentDate].diet.push({meal,name:item.name,weight:item.weight,kcal:item.kcal,protein:item.protein,fat:item.fat,carb:item.carb,imageId:idx===0?imageId:''}); });
+    } else {
+      const name=document.getElementById('foodName').value.trim(); if(!name) return alert('请输入食物名称');
+      const snackTime=document.getElementById('mealType').value==='snack'?document.getElementById('snackTime').value:'';
+      const item={meal,name,weight:+document.getElementById('foodWeight').value||0,kcal:+document.getElementById('foodKcal').value||0,protein:+document.getElementById('foodProtein').value||0,fat:+document.getElementById('foodFat').value||0,carb:+document.getElementById('foodCarb').value||0,imageId,snackTime};
+      if(!data[currentDate]) data[currentDate]={diet:[],workout:[]};
+      const editId=document.getElementById('editDietId').value;
+      if(editId!==''){
+        const old=data[currentDate].diet[editId];
+        if(old&&old.imageId&&old.imageId!==imageId) idbDeleteImage(old.imageId);
+        data[currentDate].diet[editId]=item;
+      } else data[currentDate].diet.push(item);
+    }
+    saveData(); closeDietModal(); render();
+  }catch(e){
+    alert('保存失败，请稍后再试');
+  }finally{
+    if(saveBtn){ saveBtn.disabled=false; saveBtn.textContent=oldBtnText; }
+    setTimeout(()=>{ dietSaving=false; },300);
+  }
 }
 function editDiet(i){ openDietModal(i); }
-function deleteDiet(i){ if(!confirm('确定删除？')) return; data[currentDate].diet.splice(i,1); saveData(); render(); }
-function showFoodDetail(idx){
+function deleteDiet(i){ if(!confirm('确定删除？')) return; const old=data[currentDate].diet[i]; if(old&&old.imageId) idbDeleteImage(old.imageId); data[currentDate].diet.splice(i,1); saveData(); render(); }
+async function showFoodDetail(idx){
   const item=getDay(currentDate).diet[idx]; if(!item) return;
   const mealNames={breakfast:'早餐',lunch:'午餐',dinner:'晚餐',snack:'加餐'};
   const p=item.protein||0,f=item.fat||0,c=item.carb||0,kcal=item.kcal||0;
@@ -1849,11 +2022,12 @@ function showFoodDetail(idx){
   const fatPct=kcal>0?Math.round(f*9/kcal*100):0;
   const carbPct=kcal>0?Math.round(c*4/kcal*100):0;
   const meal=mealNames[item.meal]||'加餐';
+  const imgData=item.image || (item.imageId?await idbGetImage(item.imageId):'');
   const detailHTML=`
     <div class="food-detail-overlay" id="foodDetailOverlay" onclick="closeFoodDetail()">
       <div class="food-detail-card" onclick="event.stopPropagation()">
         <button class="fd-close" onclick="closeFoodDetail()">✕</button>
-        <div class="fd-icon">${item.image?`<img src="${item.image}" style="width:56px;height:56px;border-radius:14px;object-fit:cover;">`:'🍽️'}</div>
+        <div class="fd-icon">${imgData?`<img src="${imgData}" style="width:56px;height:56px;border-radius:14px;object-fit:cover;">`:'🍽️'}</div>
         <div class="fd-name">${esc(item.name)}</div>
         <div class="fd-meal">${meal} · ${item.weight||0}g</div>
         <div class="fd-kcal-big">${kcal} <span>kcal</span></div>
@@ -2386,18 +2560,27 @@ function switchTab(name){
 }
 
 /* ═══ Export/Import ═══ */
-function exportData(){ const blob=new Blob([JSON.stringify({data,goals,profile,weights},null,2)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`fitness-backup-${new Date().toISOString().slice(0,10)}.json`; a.click(); }
+async function exportData(){
+  const images={};
+  for(const id of collectImageIds()){
+    const dataUrl=await idbGetImage(id);
+    if(dataUrl) images[id]=dataUrl;
+  }
+  const blob=new Blob([JSON.stringify({data,goals,profile,weights,images},null,2)],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download=`fitness-backup-${new Date().toISOString().slice(0,10)}.json`; a.click();
+}
 function importData(e){
   const file=e.target.files[0]; if(!file) return; const reader=new FileReader();
-  reader.onload=function(ev){ try{ const imported=JSON.parse(ev.target.result); if(!imported.data) throw new Error('格式错误'); if(!confirm('导入将覆盖所有数据，确定？')) return; data=imported.data; if(imported.goals)goals=imported.goals; if(imported.profile)profile=imported.profile; if(imported.weights)weights=imported.weights; saveData(); localStorage.setItem(GOALS_KEY,JSON.stringify(goals)); localStorage.setItem(PROFILE_KEY,JSON.stringify(profile)); localStorage.setItem(WEIGHT_KEY,JSON.stringify(weights)); render(); syncProfileUI(); renderWeights(); alert('导入成功！'); }catch(err){ alert('文件格式不正确'); } }; reader.readAsText(file); e.target.value='';
+  reader.onload=async function(ev){ try{ const imported=JSON.parse(ev.target.result); if(!imported.data) throw new Error('格式错误'); if(!confirm('导入将覆盖所有数据，确定？')) return; data=imported.data; if(imported.images){ for(const [id,dataUrl] of Object.entries(imported.images)) await idbPutImageRecord(id,dataUrl); } if(imported.goals)goals=imported.goals; if(imported.profile)profile=imported.profile; if(imported.weights)weights=imported.weights; saveData(); localStorage.setItem(GOALS_KEY,JSON.stringify(goals)); localStorage.setItem(PROFILE_KEY,JSON.stringify(profile)); localStorage.setItem(WEIGHT_KEY,JSON.stringify(weights)); render(); syncProfileUI(); renderWeights(); alert('导入成功！'); }catch(err){ alert('文件格式不正确'); } }; reader.readAsText(file); e.target.value='';
 }
-function clearAll(){ if(!confirm('确定清除所有数据？')) return; if(!confirm('再次确认：清除所有？')) return; data={}; weights=[]; saveData(); saveWeights(); render(); renderWeights(); }
+function clearAll(){ if(!confirm('确定清除所有数据？')) return; if(!confirm('再次确认：清除所有？')) return; collectImageIds().forEach(id=>idbDeleteImage(id)); data={}; weights=[]; saveData(); saveWeights(); render(); renderWeights(); }
 
 document.addEventListener('keydown',e=>{ if(e.key==='Escape'){ closeDietModal(); closeWorkoutModal(); } });
 document.querySelectorAll('.modal-bg').forEach(bg=>{ bg.addEventListener('click',function(e){ if(e.target===this){ if(this.id==='dietModal')closeDietModal(); else closeWorkoutModal(); } }); });
 
 /* ═══ Init ═══ */
 loadProfile(); loadGoals(); loadData(); loadWeights(); loadRecommend(); loadApiKey(); loadFoodCache(); loadPlan(); render(); renderWeights(); restoreTrainSession();
+migrateDietImagesToIDB().then(()=>render());
 </script>
 </body>
 </html>
