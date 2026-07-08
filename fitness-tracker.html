@@ -203,17 +203,22 @@ body {
 .fd-btn-del { flex: 1; padding: 10px; border: 1px solid #fecaca; border-radius: 12px; background: #fff; color: #ef4444; font-size: 13px; font-weight: 600; cursor: pointer; }
 
 /* ── FAB add button ── */
-.fab-add {
-  display: flex; align-items: center; justify-content: center; gap: 6px;
-  width: calc(100% - 32px); max-width: 568px; padding: 14px;
-  border-radius: 24px; background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
-  color: #fff; font-size: 16px; font-weight: 700;
-  cursor: pointer; border: none; box-shadow: 0 4px 20px rgba(34,197,94,0.3);
+.fab-actions {
   position: fixed; bottom: calc(70px + env(safe-area-inset-bottom, 0px)); left: 50%; transform: translateX(-50%);
-  z-index: 90; transition: all .2s;
+  width: calc(100% - 32px); max-width: 568px; z-index: 90;
+  display: grid; grid-template-columns: minmax(0,1fr) 52px; gap: 10px;
 }
-.fab-add:hover { box-shadow: 0 6px 28px rgba(34,197,94,0.4); transform: translateX(-50%) translateY(-1px); }
-.fab-add:active { transform: translateX(-50%) scale(0.97); }
+.fab-add,.fab-camera {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  padding: 14px; border-radius: 24px; color: #fff; font-size: 16px; font-weight: 700;
+  cursor: pointer; border: none; box-shadow: 0 4px 20px rgba(34,197,94,0.3);
+  transition: all .2s;
+}
+.fab-add { background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%); }
+.fab-camera { width: 52px; height: 52px; padding: 0; border-radius: 18px; background: linear-gradient(135deg, #0ea5e9 0%, #2563eb 100%); font-size: 22px; box-shadow: 0 4px 18px rgba(37,99,235,0.24); }
+.fab-add:hover,.fab-camera:hover { transform: translateY(-1px); }
+.fab-add:active,.fab-camera:active { transform: scale(0.97); }
+.fab-camera:disabled { opacity: .7; cursor: wait; transform: none; }
 
 .empty { text-align: center; padding: 40px 20px; }
 .empty-illustration { width: 100px; height: 100px; margin: 0 auto 14px; border-radius: 50px; display: flex; align-items: center; justify-content: center; font-size: 44px; }
@@ -517,15 +522,17 @@ body {
 .bulk-input-wrap .bulk-textarea { padding-bottom: 52px; }
 .bulk-ai-btn { position: absolute; right: 10px; bottom: 12px; border: none; border-radius: 18px; padding: 9px 14px; background: linear-gradient(135deg,#22c55e,#16a34a); color:#fff; font-size:12px; font-weight:800; cursor:pointer; box-shadow: 0 6px 18px rgba(34,197,94,.24); }
 .bulk-ai-btn:disabled { opacity:.55; cursor:not-allowed; }
-.parse-item { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; background: var(--bg); border-radius: 10px; margin-bottom: 6px; }
-.parse-item .pi-left { display: flex; align-items: center; gap: 8px; }
+.parse-item { padding: 10px 12px; background: var(--bg); border-radius: 10px; margin-bottom: 8px; }
+.parse-item .pi-top { display: grid; grid-template-columns: 8px minmax(0,1fr) 28px; gap: 8px; align-items: center; margin-bottom: 8px; }
 .parse-item .pi-dot { width: 8px; height: 8px; border-radius: 50%; }
 .parse-item .pi-dot.found { background: var(--brand); }
 .parse-item .pi-dot.not-found { background: #ef4444; }
-.parse-item .pi-name { font-size: 14px; font-weight: 500; color: var(--text2); }
-.parse-item .pi-weight { font-size: 12px; color: var(--text2); }
-.parse-item .pi-macros { font-size: 11px; color: var(--text2); text-align: right; }
-.parse-item .pi-remove { background: none; border: none; color: var(--text2); cursor: pointer; font-size: 14px; padding: 4px; margin-left: 8px; }
+.parse-item .pi-name-input { width: 100%; border: none; background: #fff; border-radius: 8px; padding: 8px 10px; font-size: 13px; font-weight: 700; color: var(--text); outline: none; }
+.parse-item .pi-edit-grid { display: grid; grid-template-columns: repeat(5,minmax(0,1fr)); gap: 6px; }
+.parse-item .pi-mini-field { background: #fff; border-radius: 8px; padding: 6px 6px 5px; }
+.parse-item .pi-mini-field span { display:block; font-size: 10px; color: var(--text3); margin-bottom: 2px; line-height: 1; }
+.parse-item .pi-mini-field input { width: 100%; border: none; outline: none; background: transparent; padding: 0; font-size: 12px; font-weight: 700; color: var(--text); }
+.parse-item .pi-remove { background: none; border: none; color: var(--text2); cursor: pointer; font-size: 14px; padding: 4px; margin-left: 0; }
 .parse-item .pi-remove:hover { color: #ef4444; }
 .parse-summary { background: var(--brand-light); border-radius: var(--radius-sm); padding: 12px 14px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
 .parse-summary .ps-total { font-size: 13px; font-weight: 700; color: var(--text); }
@@ -902,12 +909,17 @@ body {
     </div>
 
     <div class="profile-block">
-      <div class="profile-block-title"><span>AI 食物识别</span><span>DeepSeek</span></div>
+      <div class="profile-block-title"><span>AI 服务</span><span>统一入口</span></div>
+      <label style="margin-top:0;">服务商</label>
+      <select id="aiProviderSelect" onchange="saveApiKey()">
+        <option value="deepseek">DeepSeek（文字识别）</option>
+        <option value="qwen">千问 / 百炼（支持拍照识别）</option>
+      </select>
       <div class="api-key-row">
         <input id="apiKeyInput" type="password" placeholder="sk-..." onchange="saveApiKey()">
         <button onclick="const el=document.getElementById('apiKeyInput');el.type=el.type==='password'?'text':'password';this.textContent=el.type==='password'?'显示 Key':'隐藏 Key';">显示 Key</button>
       </div>
-      <div class="api-help">本地匹配不到的食物会调用 DeepSeek 估算营养。API Key 只保存在当前浏览器，不会上传到仓库。</div>
+      <div class="api-help" id="apiHelpText">本地匹配不到的食物会调用当前 AI 服务估算营养。选择千问时，底部拍照按钮可识别图片热量。API Key 只保存在当前浏览器，不会上传到仓库。</div>
     </div>
 
     <div class="profile-block" style="margin-bottom:0;">
@@ -964,7 +976,11 @@ body {
 </div>
 
 <!-- ═══ 悬浮添加按钮 ═══ -->
-<button class="fab-add" id="fabAdd" onclick="openDietModal()">＋ 记录饮食</button>
+<div class="fab-actions">
+  <button class="fab-add" id="fabAdd" onclick="openDietModal()">＋ 记录饮食</button>
+  <button class="fab-camera" id="fabCamera" onclick="openFoodCamera()" title="拍照识热量">📷</button>
+</div>
+<input type="file" id="cameraFoodImage" accept="image/*" capture="environment" style="display:none" onchange="handleCameraFood(event)">
 
 <!-- ═══ 导航 ═══ -->
 <nav class="tab-bar">
@@ -1036,12 +1052,12 @@ body {
 // ── PWA Service Worker ──
 if('serviceWorker' in navigator){ navigator.serviceWorker.register('sw.js'); }
 
-const STORAGE_KEY='fitness_v3', GOALS_KEY='goals_v3', PROFILE_KEY='profile_v3', WEIGHT_KEY='weight_v3', API_KEY_KEY='fitness_api_key', FOOD_CACHE_KEY='food_cache_v3', RECOMMEND_KEY='recommend_v3';
+const STORAGE_KEY='fitness_v3', GOALS_KEY='goals_v3', PROFILE_KEY='profile_v3', WEIGHT_KEY='weight_v3', API_KEY_KEY='fitness_api_key', AI_PROVIDER_KEY='fitness_ai_provider', FOOD_CACHE_KEY='food_cache_v3', RECOMMEND_KEY='recommend_v3';
 const DB_NAME='fittrack_db_v1', DB_VERSION=1, IMG_STORE='images';
 let currentDate=new Date().toISOString().slice(0,10);
 let data={}, goals={kcal:2000,protein:120,fat:60,carb:250};
 let profile={weight:0,height:0,fat:0,gender:'male',age:25,goal:'maintain'};
-let weights=[], apiKey='', foodCache={}, recommend={kcal:0,protein:0,fat:0,carb:0};
+let weights=[], apiKey='', aiProvider='deepseek', foodCache={}, recommend={kcal:0,protein:0,fat:0,carb:0};
 
 const FOOD_DB={
   // 肉类
@@ -1322,8 +1338,35 @@ function handleAvatar(e){
 }
 function loadWeights(){ try{weights=JSON.parse(localStorage.getItem(WEIGHT_KEY))||[];}catch(e){weights=[];} }
 function saveWeights(){ localStorage.setItem(WEIGHT_KEY,JSON.stringify(weights)); }
-function loadApiKey(){ apiKey=localStorage.getItem(API_KEY_KEY)||''; document.getElementById('apiKeyInput').value=apiKey; }
-function saveApiKey(){ apiKey=document.getElementById('apiKeyInput').value.trim(); localStorage.setItem(API_KEY_KEY,apiKey); }
+function getAIConfig(){
+  if(aiProvider==='qwen'){
+    return {provider:'qwen',label:'千问',supportsVision:true,url:'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions',textModel:'qwen-plus',visionModel:'qwen3-vl-plus'};
+  }
+  return {provider:'deepseek',label:'DeepSeek',supportsVision:false,url:'https://api.deepseek.com/chat/completions',textModel:'deepseek-chat',visionModel:''};
+}
+function updateAIHelp(){
+  const cfg=getAIConfig();
+  const help=document.getElementById('apiHelpText');
+  if(help) help.textContent=cfg.supportsVision?'当前选择千问：支持文字营养估算，也支持底部拍照识别热量。API Key 只保存在当前浏览器。':'当前选择 DeepSeek：支持文字营养估算和饮食建议，但不支持拍照识别。API Key 只保存在当前浏览器。';
+}
+function loadApiKey(){
+  apiKey=localStorage.getItem(API_KEY_KEY)||'';
+  aiProvider=localStorage.getItem(AI_PROVIDER_KEY)||'deepseek';
+  const keyInput=document.getElementById('apiKeyInput');
+  const providerSelect=document.getElementById('aiProviderSelect');
+  if(keyInput) keyInput.value=apiKey;
+  if(providerSelect) providerSelect.value=aiProvider;
+  updateAIHelp();
+}
+function saveApiKey(){
+  const keyInput=document.getElementById('apiKeyInput');
+  const providerSelect=document.getElementById('aiProviderSelect');
+  apiKey=keyInput?keyInput.value.trim():'';
+  aiProvider=providerSelect?providerSelect.value:'deepseek';
+  localStorage.setItem(API_KEY_KEY,apiKey);
+  localStorage.setItem(AI_PROVIDER_KEY,aiProvider);
+  updateAIHelp();
+}
 function loadFoodCache(){ try{foodCache=JSON.parse(localStorage.getItem(FOOD_CACHE_KEY))||{};}catch(e){foodCache={};} }
 function saveFoodCache(){ localStorage.setItem(FOOD_CACHE_KEY,JSON.stringify(foodCache)); }
 function loadRecommend(){ try{const r=JSON.parse(localStorage.getItem(RECOMMEND_KEY));if(r)recommend=r;}catch(e){} renderRecommend(); }
@@ -1721,7 +1764,31 @@ function stopVoice(){
   if(recognition){ const r=recognition; recognition=null; try{r.abort();}catch(e){} }
 }
 
-/* ═══ AI Food Query via DeepSeek ═══ */
+/* ═══ AI Food Query ═══ */
+async function callAIChat(messages,{maxTokens=600,temperature=0,vision=false}={}){
+  if(!apiKey) throw new Error('missing api key');
+  const cfg=getAIConfig();
+  if(vision&&!cfg.supportsVision) throw new Error('current ai provider does not support vision');
+  const resp=await fetch(cfg.url,{
+    method:'POST',
+    headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},
+    body:JSON.stringify({
+      model:vision?cfg.visionModel:cfg.textModel,
+      max_tokens:maxTokens,
+      temperature,
+      messages
+    })
+  });
+  if(!resp.ok) throw new Error('AI API error');
+  const json=await resp.json();
+  return json?.choices?.[0]?.message?.content||'';
+}
+function parseAIJson(content){
+  const cleaned=(content||'').replace(/```json|```/g,'').trim();
+  const match=cleaned.match(/\{[\s\S]*\}/);
+  if(!match) return null;
+  return JSON.parse(match[0]);
+}
 async function queryAIFood(name, weight){
   // weight>0: per-100g cache; weight=0: total dish estimation, cached per dish name
   const cacheKey=(weight>0?'per100:':'total:')+name.toLowerCase().trim();
@@ -1736,19 +1803,8 @@ async function queryAIFood(name, weight){
       systemMsg='你是食物营养专家。用户给一个食物名称（可能是一道菜或组合食物如"鸡腿饭""拌面""红烧牛肉面"），你估算这道食物一整份（通常一人份）的营养成分总量。严格只输出一个JSON：{"kcal":数字,"protein":数字,"fat":数字,"carb":数字}。数字保留一位小数。不要任何其他文字。';
       userMsg=name;
     }
-    const resp=await fetch('https://api.deepseek.com/chat/completions',{
-      method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},
-      body:JSON.stringify({
-        model:'deepseek-chat', max_tokens:150, temperature:0,
-        messages:[{role:'system',content:systemMsg},{role:'user',content:userMsg}]
-      })
-    });
-    if(!resp.ok) return null;
-    const json=await resp.json();
-    const content=json.choices[0].message.content;
-    const match=content.match(/\{[\s\S]*?\}/);
-    if(!match) return null;
-    const macros=JSON.parse(match[0]);
+    const content=await callAIChat([{role:'system',content:systemMsg},{role:'user',content:userMsg}],{maxTokens:150,temperature:0});
+    const macros=parseAIJson(content);
     if(macros.kcal==null) return null;
     const result={kcal:Math.round(macros.kcal),protein:Math.round(macros.protein*10)/10,fat:Math.round(macros.fat*10)/10,carb:Math.round(macros.carb*10)/10};
     foodCache[cacheKey]=result;
@@ -1776,7 +1832,7 @@ async function resolveBulkWithAI(){
 async function runBulkAIRecognition(){
   const text=document.getElementById('bulkInput').value.trim();
   if(!text) return alert('请先输入要识别的食物');
-  if(!apiKey) return alert('请先在”个人”页面填写 DeepSeek API Key');
+  if(!apiKey) return alert('请先在“个人”页面填写 AI API Key');
   const btn=document.getElementById('bulkAiBtn');
   if(btn){ btn.disabled=true; btn.textContent='识别中...'; }
   autoParseBulk();
@@ -1786,7 +1842,7 @@ async function runBulkAIRecognition(){
 
 /* ═══ AI Diet Advice ═══ */
 async function getAIAdvice(){
-  if(!apiKey) return alert('请先在”个人”页面填写 DeepSeek API Key');
+  if(!apiKey) return alert('请先在“个人”页面填写 AI API Key');
   const day=getDay(currentDate);
   if(day.diet.length===0) return alert('今天还没有记录任何饮食');
   const btn=document.getElementById('aiAdviceBtn');
@@ -1803,19 +1859,10 @@ async function getAIAdvice(){
     day.diet.forEach(item=>{ totalKcal+=item.kcal||0; totalP+=item.protein||0; totalF+=item.fat||0; totalC+=item.carb||0; });
     const goalsStr=`每日目标：${goals.kcal}kcal 蛋白质${goals.protein}g 脂肪${goals.fat}g 碳水${goals.carb}g`;
     const totalsStr=`今日已摄入：${Math.round(totalKcal)}kcal 蛋白质${Math.round(totalP)}g 脂肪${Math.round(totalF)}g 碳水${Math.round(totalC)}g`;
-    const resp=await fetch('https://api.deepseek.com/chat/completions',{
-      method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer '+apiKey},
-      body:JSON.stringify({
-        model:'deepseek-chat', max_tokens:600, temperature:0.6,
-        messages:[
-          {role:'system',content:'你是一个专业的营养师和健身饮食顾问。用户会给你今天记录的所有食物和营养目标，请你给出简短实用的饮食建议（150字以内）。包括：1.整体评价（一句话） 2.哪些营养素偏多或偏少 3.下一餐或明天的调整建议。语气友好、专业、简洁。不要用markdown。'},
-          {role:'user',content:`${dietText}\n\n${goalsStr}\n${totalsStr}`}
-        ]
-      })
-    });
-    if(!resp.ok) throw new Error('API error');
-    const json=await resp.json();
-    const content=json.choices[0].message.content;
+    const content=await callAIChat([
+      {role:'system',content:'你是一个专业的营养师和健身饮食顾问。用户会给你今天记录的所有食物和营养目标，请你给出简短实用的饮食建议（150字以内）。包括：1.整体评价（一句话） 2.哪些营养素偏多或偏少 3.下一餐或明天的调整建议。语气友好、专业、简洁。不要用markdown。'},
+      {role:'user',content:`${dietText}\n\n${goalsStr}\n${totalsStr}`}
+    ],{maxTokens:600,temperature:0.6});
     body.innerHTML=`<div style=”white-space:pre-wrap;”>${esc(content)}</div>`;
   }catch(e){
     body.innerHTML='<div style=”color:#ef4444;”>⚠️ 获取建议失败，请检查网络或 API Key</div>';
@@ -1897,19 +1944,37 @@ function renderParseResults(){
   if(parsedItems.length===0){ container.innerHTML='<div class="parse-empty">输入食物和重量后自动解析</div>'; return; }
   let totalKcal=0,totalProtein=0,totalFat=0,totalCarb=0,html='';
   parsedItems.forEach((item,i)=>{
-    if(!item.pending){ totalKcal+=item.kcal;totalProtein+=item.protein;totalFat+=item.fat;totalCarb+=item.carb; }
-    let icon,dotCls;
-    if(item.pending){ icon='⏳'; dotCls='not-found'; }
-    else if(item.found){ icon='✅'; dotCls='found'; }
-    else{ icon='⚠️'; dotCls='not-found'; }
-    const weightStr=item.weight>0?`${item.weight}g`:'';
-    const kcalStr=item.pending?'<span style="color:var(--text3);font-size:11px;">🤖 AI 识别中…</span>':'🔥'+item.kcal+'kcal 🥩'+item.protein+'g 🧈'+item.fat+'g 🍚'+item.carb+'g';
-    html+=`<div class="parse-item"><div class="pi-left"><span class="pi-dot ${dotCls}"></span><span class="pi-name">${icon} ${esc(item.name)}</span>${weightStr?`<span class="pi-weight">${weightStr}</span>`:''}</div><div style="display:flex;align-items:center;"><div class="pi-macros">${kcalStr}</div><button class="pi-remove" onclick="removeParsedItem(${i})">✕</button></div></div>`;
+    if(!item.pending){ totalKcal+=+item.kcal||0;totalProtein+=+item.protein||0;totalFat+=+item.fat||0;totalCarb+=+item.carb||0; }
+    const dotCls=item.found?'found':'not-found';
+    html+=`<div class="parse-item">
+      <div class="pi-top">
+        <span class="pi-dot ${dotCls}"></span>
+        <input class="pi-name-input" value="${esc(item.name||'')}" onchange="updateParsedItem(${i},'name',this.value)" placeholder="食物名称">
+        <button class="pi-remove" onclick="removeParsedItem(${i})">✕</button>
+      </div>
+      <div class="pi-edit-grid">
+        ${parsedMiniInput(i,'weight','重量',item.weight)}
+        ${parsedMiniInput(i,'kcal','kcal',item.kcal)}
+        ${parsedMiniInput(i,'protein','蛋白',item.protein)}
+        ${parsedMiniInput(i,'fat','脂肪',item.fat)}
+        ${parsedMiniInput(i,'carb','碳水',item.carb)}
+      </div>
+    </div>`;
   });
   const hasPending=parsedItems.some(item=>item.pending);
   const summaryText=hasPending?'📊 本餐合计 (部分识别中)':('📊 本餐合计');
   html+=`<div class="parse-summary"><span class="ps-total">${summaryText}</span><span class="ps-detail">🔥 ${totalKcal}kcal · 🥩 ${Math.round(totalProtein*10)/10}g · 🧈 ${Math.round(totalFat*10)/10}g · 🍚 ${Math.round(totalCarb*10)/10}g</span></div>`;
   container.innerHTML=html;
+}
+function parsedMiniInput(i,field,label,value){
+  return `<label class="pi-mini-field"><span>${label}</span><input type="number" inputmode="decimal" value="${value||0}" onchange="updateParsedItem(${i},'${field}',this.value)"></label>`;
+}
+function updateParsedItem(i,field,value){
+  if(!parsedItems[i]) return;
+  if(field==='name') parsedItems[i][field]=(value||'').trim();
+  else parsedItems[i][field]=Math.max(0,Math.round((parseFloat(value)||0)*10)/10);
+  parsedItems[i].pending=false;
+  renderParseResults();
 }
 function removeParsedItem(i){ parsedItems.splice(i,1); renderParseResults(); }
 
@@ -1956,6 +2021,68 @@ async function handleImageUpload(e){
     alert('图片处理失败，请换一张图片再试');
   }
 }
+function openFoodCamera(){
+  const cfg=getAIConfig();
+  if(!apiKey) return alert('请先在“个人”页面填写 AI API Key');
+  if(!cfg.supportsVision) return alert('当前选择的是 '+cfg.label+'，它不支持图片识别。请在“个人”页面切换到千问 / 百炼。');
+  const input=document.getElementById('cameraFoodImage');
+  if(input){ input.value=''; input.click(); }
+}
+async function handleCameraFood(e){
+  const file=e.target.files[0]; if(!file) return;
+  const btn=document.getElementById('fabCamera');
+  const oldText=btn?btn.textContent:'';
+  if(btn){ btn.disabled=true; btn.textContent='…'; }
+  try{
+    const dataUrl=await compressImageFile(file);
+    const result=await recognizeFoodImage(dataUrl);
+    openAIRecognizedDiet(dataUrl,result);
+  }catch(err){
+    alert('拍照识别失败：请检查千问 API Key、网络或余额。照片会带入普通记录页，你可以手动填写。');
+    try{
+      const dataUrl=await compressImageFile(file);
+      await openDietModal();
+      setUploadedImage(dataUrl);
+    }catch(e2){}
+  }finally{
+    if(btn){ btn.disabled=false; btn.textContent=oldText||'📷'; }
+  }
+}
+async function recognizeFoodImage(dataUrl){
+  const prompt='你是营养记录助手。请识别图片中的所有可食用食物和饮料，估算每项的重量、热量、蛋白质、脂肪、碳水。只输出JSON，不要解释。格式：{"mealGuess":"breakfast|lunch|dinner|snack","items":[{"name":"食物名","weight":克数,"kcal":热量,"protein":蛋白质克数,"fat":脂肪克数,"carb":碳水克数}],"note":"不确定性提示"}。如果无法识别，items为空数组。数值用数字，不要单位。';
+  const content=await callAIChat([
+    {role:'user',content:[
+      {type:'text',text:prompt},
+      {type:'image_url',image_url:{url:dataUrl}}
+    ]}
+  ],{maxTokens:900,temperature:0.1,vision:true});
+  const parsed=parseAIJson(content);
+  if(!parsed||!Array.isArray(parsed.items)||parsed.items.length===0) throw new Error('empty recognition');
+  parsed.items=parsed.items.map(item=>({
+    name:String(item.name||'未命名食物'),
+    rawName:String(item.name||'未命名食物'),
+    weight:Math.max(0,Math.round((parseFloat(item.weight)||0)*10)/10),
+    kcal:Math.max(0,Math.round((parseFloat(item.kcal)||0)*10)/10),
+    protein:Math.max(0,Math.round((parseFloat(item.protein)||0)*10)/10),
+    fat:Math.max(0,Math.round((parseFloat(item.fat)||0)*10)/10),
+    carb:Math.max(0,Math.round((parseFloat(item.carb)||0)*10)/10),
+    found:true,
+    pending:false
+  }));
+  return parsed;
+}
+async function openAIRecognizedDiet(dataUrl,result){
+  await openDietModal();
+  switchEntryMode('bulk');
+  const meal=['breakfast','lunch','dinner','snack'].includes(result.mealGuess)?result.mealGuess:'lunch';
+  document.getElementById('mealType').value=meal;
+  toggleSnackTime();
+  setUploadedImage(dataUrl);
+  parsedItems=result.items;
+  renderParseResults();
+  const saveBtn=document.querySelector('#dietModal .btn-primary');
+  if(saveBtn) saveBtn.textContent='✓ 一键记录';
+}
 function removeImage(e){ e.stopPropagation(); document.getElementById('dietImageData').value=''; document.getElementById('dietImageId').value=''; document.getElementById('imgPreview').style.display='none'; document.getElementById('imgRemove').style.display='none'; document.getElementById('uploadZone').classList.remove('has-image'); document.querySelector('.upload-zone .upload-icon').style.display=''; document.querySelector('.upload-zone .upload-text').style.display=''; document.querySelector('.upload-zone .upload-sub').style.display=''; document.getElementById('foodImage').value=''; }
 const uploadZone=document.getElementById('uploadZone'); uploadZone.addEventListener('dragover',e=>{e.preventDefault();uploadZone.style.borderColor='var(--blue)';}); uploadZone.addEventListener('dragleave',()=>{uploadZone.style.borderColor='';}); uploadZone.addEventListener('drop',e=>{ e.preventDefault(); uploadZone.style.borderColor=''; const file=e.dataTransfer.files[0]; if(file&&file.type.startsWith('image/')){ document.getElementById('foodImage').files=e.dataTransfer.files; handleImageUpload({target:{files:[file]}}); } });
 
@@ -1965,6 +2092,8 @@ function toggleSnackTime(){
 }
 async function openDietModal(editIndex){
   resetUploadUI(); stopVoice(); parsedItems=[];
+  const saveBtn=document.querySelector('#dietModal .btn-primary');
+  if(saveBtn) saveBtn.textContent='✓ 保存';
   document.getElementById('dietModal').classList.add('show');
   if(typeof editIndex==='number'){
     const item=getDay(currentDate).diet[editIndex]; switchEntryMode('single');
